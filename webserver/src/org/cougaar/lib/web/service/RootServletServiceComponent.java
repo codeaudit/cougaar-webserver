@@ -315,8 +315,8 @@ implements Component
       // get the white pages service
       wp = (WhitePagesService)
         sb.getService(this, WhitePagesService.class, null);
-      if (wp == null) {
-        throw new RuntimeException(
+      if (wp == null && log.isWarnEnabled()) {
+        log.warn(
             "Root servlet-service unable to"+
             " obtain WhitePagesService");
       }

@@ -114,11 +114,21 @@ implements GlobalRegistry {
       AddressEntry.getAddressEntry(
         rawName, scheme, uri);
 
+    if (wp == null) {
+      if (logger.isInfoEnabled()) {
+        logger.info(
+            "Ignoring servlet WP "+
+            (bind ? "re" : "un")+
+            "bind("+entry+")");
+      }
+      return;
+    }
+
     Callback callback = new Callback() {
       public void execute(Response res) {
         if (res.isSuccess()) {
-          if (logger.isInfoEnabled()) {
-            logger.info("WP Response: "+res);
+          if (logger.isDebugEnabled()) {
+            logger.debug("WP Response: "+res);
           }
         } else {
           logger.error("WP Error: "+res);
@@ -152,6 +162,16 @@ implements GlobalRegistry {
     }
 
     String rawName = decode(encName);
+
+    if (wp == null) {
+      if (logger.isInfoEnabled()) {
+        logger.info(
+            "Ignoring servlet WP get("+
+            rawName+", "+scheme+", "+timeout+")");
+      }
+      return null;
+    }
+
     AddressEntry ae;
     try {
       ae = wp.get(rawName, scheme, timeout);
@@ -168,6 +188,16 @@ implements GlobalRegistry {
       String encSuffix,
       long timeout) throws IOException {
     String rawSuffix = decode(encSuffix);
+
+    if (wp == null) {
+      if (logger.isInfoEnabled()) {
+        logger.info(
+            "Ignoring servlet WP list("+
+            rawSuffix+", "+timeout+")");
+      }
+      return Collections.EMPTY_SET;
+    }
+
     Set s;
     try {
       s = wp.list(rawSuffix, timeout);
