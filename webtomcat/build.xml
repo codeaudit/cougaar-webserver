@@ -214,6 +214,7 @@
     <property name="genpath" refid="codegen.path"/>
 
     <!-- patterns -->
+    <!-- ps.jar.extras are sourcefiles which will be added to the jar -->
     <patternset id="ps.jar.extras">
       <include name="**/*.def"/>
       <include name="**/*.gif"/>
@@ -222,6 +223,10 @@
       <include name="**/*.jpg"/>
       <include name="**/*.bmp"/>
       <include name="**/*.png"/>
+      <include name="**/*.properties"/>
+      <include name="**/*.xml"/>
+      <include name="**/*.wav"/>
+      <include name="**/*.au"/>
     </patternset>
 
     <patternset id="ps.notsources">
