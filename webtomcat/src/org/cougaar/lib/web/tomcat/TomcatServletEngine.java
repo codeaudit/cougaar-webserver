@@ -62,8 +62,6 @@ public class TomcatServletEngine
 {
   private static final String SEP = File.separator;
 
-  private static final boolean DEBUG = false;
-
   private static final String[] CONFIG_FILES = {
     "conf"+SEP+"server.xml",
     "conf"+SEP+"modules.xml",

@@ -51,8 +51,6 @@ public class SecureContext extends StandardContext {
   private static final String DEFAULT_CONTEXT_MANAGER  = 
     "org.cougaar.core.security.provider.ServletPolicyServiceProvider";
 
-  private Method _sppSetDualAuthenticator = null;
-
   public SecureContext() {
     String contextManagerClass = System.getProperty(PROP_CLASS);
     if (contextManagerClass == null && Boolean.getBoolean(PROP_ENABLE)) {
