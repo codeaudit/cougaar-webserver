@@ -89,7 +89,7 @@ subpath -- here we'll name the file
 Note that the typical JSSE/JDK's "${user.home}/.keystore" and 
 "${java.home}/jre/lib/security/.keystore" are <b>NOT</b> assumed!
 <p>
-The certificate alias must be "tomcat" to work with Cougaar's Tomcat 3.3
+The certificate alias must be "tomcat" to work with Cougaar's Tomcat 4.0.3
 servlet Server implementation, and must be an RSA certificate.  
 Additionally the certificate's "name" must be the host's name, such as
 "foo.com" <a name="hostname">.  Here's
@@ -145,7 +145,7 @@ First, enable the <a href="#clientAuth">"clientAuth" system property</a>.
 <p>
 The client's public signer's certificate ("certificate-authority cert")
 must be imported into the server's <a href="#keystore">"bin/certs"</a> 
-keystore file.  This is a Tomcat 3.3 requirement.
+keystore file.  This is a Tomcat 4.0.3 requirement.
 <p>
 Unfortunately <a href="#keytool">Keytool</a> can not be used to create a 
 client certificate.  There are other 3rd-party tools and companies
@@ -180,7 +180,7 @@ used HTTPS security.
 <li>
 Optional username/password authentication:
 <p>
-As an example of username / password authentication, the Tomcat 3.3 
+As an example of username / password authentication, the Tomcat 4.0.3 
 server implementation is configured to prompt for a login for
 all requests with paths that end in ".secure". <a name="secure">  
 This is defined in:

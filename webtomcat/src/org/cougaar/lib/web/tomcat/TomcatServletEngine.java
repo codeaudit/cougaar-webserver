@@ -35,7 +35,7 @@ import org.cougaar.lib.web.arch.server.*;
 import org.apache.catalina.LifecycleException;
 
 /**
- * Implementation of <code>ServletEngine</code> for Tomcat 3.3.
+ * Implementation of <code>ServletEngine</code> for Tomcat 4.0.3.
  * <p>
  * The <tt>TomcatServletEngine(String[])</tt> constructor requires 
  * one argument:
@@ -279,23 +279,17 @@ public class TomcatServletEngine
             "Unable to start Tomcat: "+te.getMessage());
         te.printStackTrace();
       }
-      Throwable tet = te.getThrowable();
-      if (tet instanceof BindException) {
-        // port is already in use
-        throw (BindException) tet;
+      Throwable teCause = te.getThrowable();
+      if (teCause instanceof BindException) {
+        BindException be = (BindException) teCause;
+        String msg = be.getMessage();
+        if ((msg != null) &&
+            ((msg.indexOf("Address already in use") >= 0) ||
+             (msg.indexOf("Address in use") >= 0))) {
+          // port is already in use
+          throw be;
+        }
       } 
-      String msg = te.getMessage();
-System.out.println("\n\n TWRIGHT msg("+msg+")");
-System.out.println("\n\n TWRIGHT throwable("+te.getThrowable()+")");
-      if ((msg != null) &&
-          ((msg.indexOf("Address already in use") >= 0) ||
-           (msg.indexOf("Address in use") >= 0))) {
-        // very likely a port-in-use exception
-        //
-        // let the user figure out which port it was...
-        throw new BindException(
-            "Port already in use");
-      }
       throw new RuntimeException(
           "Tomcat-internal exception: ", te);
     } catch (Exception e) {
