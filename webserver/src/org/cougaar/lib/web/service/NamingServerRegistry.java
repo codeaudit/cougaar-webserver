@@ -30,8 +30,12 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
+import org.cougaar.util.log.Logging;
+import org.cougaar.util.log.Logger;
 import org.cougaar.core.service.wp.AddressEntry;
 import org.cougaar.core.service.wp.Application;
+import org.cougaar.core.service.wp.Callback;
+import org.cougaar.core.service.wp.Response;
 import org.cougaar.core.service.wp.Cert;
 import org.cougaar.core.service.wp.WhitePagesService;
 import org.cougaar.lib.web.arch.root.GlobalRegistry;
@@ -44,6 +48,8 @@ import org.cougaar.lib.web.arch.root.GlobalRegistry;
  */
 public class NamingServerRegistry 
 implements GlobalRegistry {
+
+  private static final Logger logger = Logging.getLogger(NamingServerRegistry.class);
 
   private static final Application APP = 
     Application.getApplication("servlet");
@@ -93,7 +99,19 @@ implements GlobalRegistry {
             Cert.NULL,
             Long.MAX_VALUE);
       try {
-        wp.rebind(httpEntry);
+        Callback callback = new Callback() {
+            public void execute(Response res) {
+              if (res.isSuccess()) {
+                if (logger.isInfoEnabled()) {
+                  logger.info("WP Response: "+res);
+                }
+              } else {
+                logger.error("WP Error: "+res);
+              }
+            }
+          };
+
+        wp.rebind(httpEntry, callback);
       } catch (Exception e) {
         throw new RuntimeException(
             "Unable to bind("+httpEntry+")", e);
@@ -116,6 +134,18 @@ implements GlobalRegistry {
             Cert.NULL,
             Long.MAX_VALUE);
       try {
+        Callback callback = new Callback() {
+            public void execute(Response res) {
+              if (res.isSuccess()) {
+                if (logger.isInfoEnabled()) {
+                  logger.info("WP Response: "+res);
+                }
+              } else {
+                logger.error("WP Error: "+res);
+              }
+            }
+          };
+
         wp.rebind(httpsEntry);
       } catch (Exception e) {
         throw new RuntimeException(
