@@ -111,18 +111,13 @@ public final class HookServlet implements Servlet {
   }
   
   private static final class NoHookServlet implements Servlet {
-    public void service(
-			ServletRequest req,
-			ServletResponse res) throws ServletException, IOException {
-      HttpServletRequest httpReq;
-      HttpServletResponse httpRes;
-      try {
-        httpReq = (HttpServletRequest)req;
-        httpRes = (HttpServletResponse)res;
-      } catch (ClassCastException cce) {
-	// not an http request?
-	throw new ServletException("non-HTTP request or response");
+    public void service(ServletRequest req, ServletResponse res)
+      throws ServletException, IOException {
+      if (!(req instanceof HttpServletRequest)
+        || (res instanceof HttpServletResponse)) {
+        throw new ServletException("non-HTTP request or response");
       }
+      HttpServletResponse httpRes = (HttpServletResponse) res;
 
       // write an error message.  
       //
