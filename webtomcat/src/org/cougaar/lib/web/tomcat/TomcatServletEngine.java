@@ -25,6 +25,8 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.BindException;
 import java.net.URL;
+import java.util.Collections;
+import java.util.Map;
 import javax.servlet.*;
 import javax.servlet.http.*;
  
@@ -57,6 +59,7 @@ import org.apache.catalina.LifecycleException;
 public class TomcatServletEngine
   implements ServletEngine 
 {
+  private static final boolean DEBUG = false;
 
   private static final String[] CONFIG_FILES = {
     "conf/server.xml",
@@ -66,9 +69,11 @@ public class TomcatServletEngine
 
   private final String installPath;
 
-  private HttpConfig httpC;
-  private HttpsConfig httpsC;
-  private boolean debug;
+  private Map serverOptions;
+  private int httpPort;
+  private int httpsPort;
+  private Map httpOptions;
+  private Map httpsOptions;
 
   private boolean isRunning = false;
 
@@ -134,96 +139,58 @@ public class TomcatServletEngine
   }
 
   public void configure(
-      HttpConfig httpC,
-      HttpsConfig httpsC,
-      boolean debug) {
+      Map serverOptions,
+      int httpPort, Map httpOptions,
+      int httpsPort, Map httpsOptions) {
     if (isRunning()) {
       throw new IllegalStateException(
           "Unable to configure a running Tomcat");
     }
-    this.httpC = httpC;
-    this.httpsC = httpsC;
-    this.debug = debug;
 
-    if (httpsC != null) {
-      // Tomcat makes some restrictions here
-      if (!("tomcat".equals(httpsC.getServerKeyname()))) {
-        throw new IllegalArgumentException(
-            "Tomcat ServletEngine requires the server"+
-            " certificate's name to be \"tomcat\"");
-      }
-      if (httpsC.getClientAuth()) {
-        String sk = httpsC.getServerKeystore();
-        String tk = httpsC.getTrustKeystore();
-        if (!(sk.equals(tk))) {
-          throw new IllegalArgumentException(
-              "Tomcat ServletEngine requires the server"+
-              " keystore (\""+sk+"\") to also be the "+
-              "trust keystore (\""+tk+"\")");
-        }
-      }
+    if (serverOptions == null) {
+      serverOptions = Collections.EMPTY_MAP;
     }
-  }
+    if (httpOptions == null) {
+      httpOptions = Collections.EMPTY_MAP;
+    }
+    if (httpsOptions == null) {
+      httpsOptions = Collections.EMPTY_MAP;
+    }
 
-  public HttpConfig getHttpConfig() {
-    return httpC;
-  }
-
-  public HttpsConfig getHttpsConfig() {
-    return httpsC;
-  }
-
-  public boolean getDebug() {
-    return debug;
+    this.serverOptions = serverOptions;
+    this.httpPort = httpPort;
+    this.httpOptions = httpOptions;
+    this.httpsPort = httpsPort;
+    this.httpsOptions = httpsOptions;
   }
 
   public boolean isRunning() {
     return isRunning;
   }
 
-
-
   public void start() throws IOException {
-
-    if (debug) {
-      System.out.println("Start TomCat ServletEngine");
-    }
 
     if (isRunning()) {
       throw new IllegalStateException(
           "Tomcat is currently running");
     }
 
-    if ((httpC == null) &&
-        (httpsC == null)) {
+    if ((httpPort <= 0) &&
+        (httpsPort <= 0)) {
       throw new IllegalStateException(
           "Nothing to start -- both HTTP and HTTPS"+
-          " configurations are null");
+          " ports are negative");
     }
 
     // launch tomcat with specified ports
     // tomcat automatically loads the HookServlet due to XML scripts
     try { 
-      if (debug) {
-        System.out.println("create embedded-tomcat");
-      }
       EmbeddedTomcat et = new EmbeddedTomcat();
       
-
-      if (debug) {
-        System.out.println("turning up embeded-tomcat debug level");
-        et.setDebug(true);
-      }
-
-      if (debug) {
-        System.out.println("setting installPath: \""+installPath+"\"");
-      }
+      et.configure(serverOptions);
 
       et.setInstall(installPath);
 
-      if (debug) {
-        System.out.println("setting class loaders");
-      }
       ClassLoader cl = this.getClass().getClassLoader();
       if (cl == null) {
         cl = ClassLoader.getSystemClassLoader();
@@ -237,48 +204,22 @@ public class TomcatServletEngine
           "Tomcat-internal exception: " + e.getMessage());
       }
       
-      if (httpC != null) {
-        if (debug) {
-          System.out.println("setting https endpoint: "+httpsC);
-        }
-        System.out.println(
-            "Starting HTTP  server on port: "+httpC.getPort());
-
-        et.addEndpoint(httpC.getPort(), null);
+      if (httpPort > 0) {
+        et.addEndpoint(
+            httpPort,
+            httpOptions);
       }
 
-      if (httpsC != null) {
-        // Tomcat 3.3's "addSecureEndpoint(..)" looks
-        //   broken -- the keyfile and keypass are
-        //   ignored (!).  Here we work around...
-        if (debug) {
-          System.out.println("setting https endpoint: "+httpsC);
-        }
-        HttpConfig shc = httpsC.getHttpConfig();
-        System.out.println(
-            "Starting HTTPS server on port: "+shc.getPort());
-        et.addSecureEndpoint( shc.getPort(), null,
-                              httpsC.getServerKeystore(),
-                              httpsC.getServerKeypass(),
-                              httpsC.getClientAuth() );
+      if (httpsPort > 0) {
+        et.addSecureEndpoint(
+            httpsPort,
+            httpsOptions);
       }
 
-      if (debug) {
-        System.out.println("calling embeddedStart()");
-      }
       et.embeddedStart();
-
-      if (debug) {
-        System.out.println("server is running");
-      }
 
       this.isRunning = true;
     } catch (LifecycleException te) {
-      if (debug) {
-        System.err.println(
-            "Unable to start Tomcat: "+te.getMessage());
-        te.printStackTrace();
-      }
       Throwable teCause = te.getThrowable();
       if (teCause instanceof BindException) {
         BindException be = (BindException) teCause;
@@ -293,26 +234,12 @@ public class TomcatServletEngine
       throw new RuntimeException(
           "Tomcat-internal exception: ", te);
     } catch (Exception e) {
-      if (debug) {
-        System.err.println(
-            "Unable to start Tomcat: "+e.getMessage());
-        e.printStackTrace();
-      }
       throw new RuntimeException(
           "Unknown Tomcat exception: ", e);
     }
   }
 
   public void setGateway(Servlet servlet) throws ServletException {
-    if (debug) {
-      System.out.println("servlet engine setting gateway");
-      System.out.println("  servlet: "+servlet);
-      System.out.println("  hook: "+HookServlet.class);
-      System.out.println("  classloader: "+
-          HookServlet.class.getClassLoader());
-      System.out.println("  stack: ");
-      (new Exception()).printStackTrace();
-    }
     HookServlet.setServlet(servlet);
   }
 

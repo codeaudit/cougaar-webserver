@@ -20,8 +20,10 @@
  */
 package org.cougaar.lib.web.tomcat;
 
-import java.net.InetAddress;
 import java.io.File;
+import java.net.InetAddress;
+import java.util.Collections;
+import java.util.Map;
 import org.apache.catalina.startup.Catalina;
 import org.apache.catalina.LifecycleException;
 import org.apache.catalina.Lifecycle;
@@ -33,6 +35,7 @@ import org.apache.catalina.connector.http.HttpConnector;
 import org.apache.catalina.Engine;
 import org.apache.catalina.Loader;
 import org.apache.catalina.net.SSLServerSocketFactory;
+import org.apache.catalina.net.ServerSocketFactory;
 import org.apache.catalina.util.xml.XmlMapper;
 
 /**
@@ -50,6 +53,25 @@ public class EmbeddedTomcat extends Catalina {
    * Default constructor
    */
   public EmbeddedTomcat() {
+  }
+
+  /**
+   * Configure the server.
+   * <p>
+   * Current valid options:
+   * <ul>
+   *  <li>"debug"<br>
+   *      Optional debug flag, which defaults to "false".
+   *      </li><p>
+   * </ul>
+   *
+   * @param options Map of optional parameters
+   */
+  public void configure(Map options) {
+    if (options != null) {
+      this.debug = 
+        "true".equals(options.get("debug"));
+    }
   }
 
   /**
@@ -124,13 +146,62 @@ public class EmbeddedTomcat extends Catalina {
 
   /**
    * Adds an HTTPConnector to the server.
+   * <p>
+   * Current valid options:
+   * <ul>
+   *  <li>"factory"<br>
+   *      Optional classname for server socket factory, which 
+   *      defaults to 
+   *      "org.apache.catalina.net.DefaultServerSocketFactory"
+   *      </li><p>
+   * </ul>
    *
    * @param port The TCP port number to bind to
-   * @param address The IP address to use. May be null to refer to the
-   *                default address.
+   * @param options Map of optional parameters
    */
-  public void addEndpoint(int port, InetAddress address) {
+  public void addEndpoint(
+      int port,
+      Map options) {
+    String factoryClassname = null;
+
+    if (options != null) {
+      factoryClassname = (String) 
+        options.get("factory");
+      // check for unknown option names?
+
+      /*
+      // other options we may want to add:
+      minProcessors="5"
+      maxProcessors="75"
+      enableLookups="true"
+      acceptCount="10"
+      debug="0"
+      connectionTimeout="60000"
+      */
+    }
+
+    ServerSocketFactory fact = null;
+    if (factoryClassname != null) {
+      try {
+        Class cl = Class.forName(factoryClassname);
+        fact = (ServerSocketFactory) cl.newInstance();
+      } catch (Exception e) {
+        throw new RuntimeException(
+            "Invalid server socket factory: "+factoryClassname, e);
+      }
+    }
+
+    addEndpoint(port, null, fact);
+  }
+
+  /**
+   * Adds an HTTP socket connector to the server.
+   */
+  public void addEndpoint(
+      int port, InetAddress address,
+      ServerSocketFactory fact) {
     HttpConnector ctr = new HttpConnector();
+    if (fact != null) ctr.setFactory(fact);
     if (address != null) ctr.setAddress(address.getHostAddress());
     ctr.setPort(port);
     ctr.setEnableLookups(false);
@@ -140,28 +211,99 @@ public class EmbeddedTomcat extends Catalina {
 
   /**
    * Adds an HTTPS socket connector to the server.
+   * <p>
+   * Note, if the factory is not specified, then Tomcat
+   * imposes these restrictions:
+   * <ul>
+   *   <li>The certificate name must be "tomcat".
+   *       </li><p>
+   *   <li>The keystore and the truststore must be the
+   *       same file.
+   *       </li><p>
+   * </ul>
+   * <p>
+   * Current valid options:
+   * <ul>
+   *  <li>"factory"<br>
+   *      Optional classname for server socket factory, which 
+   *      defaults to 
+   *      "org.apache.catalina.net.SSLServerSocketFactory"
+   *      </li><p>
+   *  <li>"keystore"<br>
+   *      Optional file name for the certificate keystore.
+   *      </li><p>
+   *  <li>"keypass"<br>
+   *      Optional password for the certificate keystore.
+   *      </li><p>
+   *  <li>"clientAuth"<br>
+   *      If the value is "true", then client authentication
+   *      is enabled.
+   *      </li><p>
+   * </ul>
    *
    * @param port The TCP port number to bind to
-   * @param address The IP address to use. May be null to refer to the
-   *                default address.
-   * @param keystore The file name of the keystore to use. null means that
-   *                 it should use the default keystore
-   * @param keypass  The password for the given keystore file.
-   * @param clientAuth True if you want to require client authentication.
+   * @param options Map of optional parameters
+   */
+  public void addSecureEndpoint(
+      int port,
+      Map options) {
+    String factoryClassname = null;
+    String keystore = null;
+    String keypass = null;
+    boolean clientAuth = false;
+
+    if (options != null) {
+      factoryClassname = (String) 
+        options.get("factory");
+      keystore = (String) 
+        options.get("keystore");
+      keypass = (String) 
+        options.get("keypass");
+      clientAuth =
+        "true".equals(
+            options.get("clientAuth"));
+      // also see "addEndpoint(..)" options
+    }
+
+    ServerSocketFactory fact;
+    if (factoryClassname == null) {
+      fact = new SSLServerSocketFactory();
+    } else {
+      try {
+        Class cl = Class.forName(factoryClassname);
+        fact = (ServerSocketFactory) cl.newInstance();
+      } catch (Exception e) {
+        throw new RuntimeException(
+            "Invalid server socket factory: "+factoryClassname, e);
+      }
+    }
+
+    // replace with reflective parameter setting?
+    if (fact instanceof SSLServerSocketFactory) {
+      SSLServerSocketFactory sslfact = 
+        (SSLServerSocketFactory) fact;
+      if (keystore != null) {
+        sslfact.setKeystoreFile(keystore);
+      }
+      if (keypass != null) {
+        sslfact.setKeystorePass(keypass);
+      }
+      if (clientAuth) {
+        sslfact.setClientAuth(true);
+      }
+      // protocol?
+    }
+
+    addSecureEndpoint(port, address, fact);
+  }
+
+  /**
+   * Adds an HTTPS socket connector to the server.
    */
   public void addSecureEndpoint(int port, InetAddress address,
-                                String keystore, String keypass,
-                                boolean clientAuth) {
+                                ServerSocketFactory fact) {
     HttpConnector ctr = new HttpConnector();
-    SSLServerSocketFactory fact = new SSLServerSocketFactory();
-    if (keystore != null) {
-      fact.setKeystoreFile(keystore);
-      fact.setKeystorePass(keypass);
-    }
-    if (clientAuth) {
-      fact.setClientAuth(true);
-    }
-    ctr.setFactory(fact);
+    if (fact != null) ctr.setFactory(fact);
     if (address != null) ctr.setAddress(address.getHostAddress());
     ctr.setPort(port);
     ctr.setEnableLookups(false);
@@ -171,10 +313,4 @@ public class EmbeddedTomcat extends Catalina {
     getService().addConnector(ctr);
   }
 
-  /**
-   * Set the debug flag for this class
-   */
-  void setDebug(boolean debug) {
-    this.debug = debug;
-  }
 }
