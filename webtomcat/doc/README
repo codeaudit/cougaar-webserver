@@ -8,9 +8,14 @@ The source contains the package:
 The required data files are in "data/":
   conf/server.xml
   conf/modules.xml
+  conf/tomcat-users.xml
   webapps/ROOT/WEB-INF/web.xml
 
-Depends upon "sys/tomcat_33.jar", which is a merge of 9 Tomcat 
-3.3 jars that include the "org.apache.tomcat.*" packages.
+An example username/password login is specified in "web.xml",
+with the username/password in "tomcat-users.xml".  All
+requests with URL paths that end in ".secure" will be
+prompted with a login page.
 
-[Further documentation will be added in the near future]
+The code depends upon "sys/tomcat_33.jar", which is a merge 
+of 9 Tomcat 3.3 jars that include the "org.apache.tomcat.*" 
+packages.

@@ -24,7 +24,7 @@
         <url-pattern>/*</url-pattern> 
     </servlet-mapping>
 
-    <!-- create an error page that shows the error message -->
+    <!-- specify an error page for custom error messages -->
     <error-page>
         <error-code>404</error-code>
         <location>/error404</location>
@@ -38,24 +38,37 @@
         <url-pattern>/error404</url-pattern> 
     </servlet-mapping>
 
-    <!-- Default login configuration uses BASIC authentication -->
-    <!--
-    <login-config>
-      <auth-method>BASIC</auth-method>
-      <realm-name>Example Basic Authentication Area</realm-name>
-    </login-config>
-    -->
+    <!-- 
+      Enable FORM-based authentication.
 
-    <!-- Form-based login is enabled by default.  If you wish to
-         try Basic authentication, comment out the <login-config>
-         section below and uncomment the one above. -->
+      In this example we'll force all "*.secure" URL requests 
+      to popup a username-password login.  See 
+      "conf/tomcat-users.xml" for the username-password list.
+
+      This is an example of server-specific security that's
+      hidden from the user Servlets.
+
+      Tomcat only supports limited pattern matching:
+        1) exact-match  (e.g. "/test")
+        2) prefix*      (e.g. "/test/*")
+        3) *extension   (e.g. "*test")
+      I'd *really* prefer full regular expressions..
+    -->
+    <security-constraint>
+        <web-resource-collection>
+            <web-resource-name>Cougaar</web-resource-name>
+            <url-pattern>*.secure</url-pattern>
+        </web-resource-collection>
+        <auth-constraint>
+            <role-name>secure</role-name>
+        </auth-constraint>
+    </security-constraint>
     <login-config>
-      <auth-method>FORM</auth-method>
-      <realm-name>Example Form-Based Authentication Area</realm-name>
-      <form-login-config>
-        <form-login-page>/jsp/security/login/login.jsp</form-login-page>
-        <form-error-page>/jsp/security/login/error.jsp</form-error-page>
-      </form-login-config>
+        <auth-method>BASIC</auth-method>
+        <realm-name>Cougaar</realm-name>
     </login-config>
+    <security-role>
+        <role-name>secure</role-name>
+    </security-role>
 
 </web-app>

@@ -64,9 +64,20 @@
 
         <SimpleSessionStore maxActiveSessions="-1" />
 
-        <!-- future form-based username/password support: -->
         <AccessInterceptor />
         <CredentialsInterceptor />
+
+        <!-- 
+          Form-based username/password support.
+
+          The "web.xml" will force all "*.secure" requests
+          to undergo username/password authentication.
+          See "tomcat-users.xml" for the passwords list.
+
+          Under Tomcat 4 we could plugin a custom Realm, which
+          could read the username/passwords from "cougaar.rc".
+          -->
+        <SimpleRealm filename="conf/tomcat-users.xml"/>
 
         <LoadOnStartupInterceptor />
 
