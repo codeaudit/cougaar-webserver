@@ -33,6 +33,8 @@ import javax.servlet.Servlet;
 
 import org.cougaar.core.component.BindingSite;
 import org.cougaar.core.component.Component;
+import org.cougaar.core.component.NullService;
+import org.cougaar.core.component.Service;
 import org.cougaar.core.component.ServiceBroker;
 import org.cougaar.core.component.ServiceProvider;
 import org.cougaar.core.mts.MessageAddress;
@@ -44,16 +46,12 @@ import org.cougaar.lib.web.arch.leaf.LeafServletRegistry;
 import org.cougaar.lib.web.arch.leaf.LeafToRootRedirectServlet;
 
 /**
- * A root-level (Node) <code>Component</code> that adds a
- * <code>ServiceProvider</code> for <code>ServletService</code>, 
- * which is be used to register <code>Servlet</code>s.
+ * An agent component that advertises the agent-internal
+ * <code>ServletService</code>, based upon the node's
+ * <code>RootServletService</code>.
  * <p>
- * For example, Node "N" can create a new root-level ServletService 
- * its children.  When a child, such as agent "A", requests
- * ServletService it will be able to register itself as "/$A/".
- * <p>
- * This Component overrides the parent's ServletService for all
- * Components at or below this Component's insertion point.
+ * This component also blocks the RootServletService, since
+ * agent components should use the ServletService.
  *
  * @see ServletService
  */
@@ -64,8 +62,9 @@ implements Component
   private ServiceBroker sb;
 
   private String encName;
-  private ServletService rootServletService;
+  private RootServletService rootServletService;
   private LeafServletServiceProviderImpl leafSP;
+  private RootBlockerSP rootBlockerSP;
 
   public void setBindingSite(BindingSite bs) {
     // only care about the service broker
@@ -102,22 +101,26 @@ implements Component
 
     // get the (root) servlet service
     if (rootServletService == null) {
-      rootServletService = (ServletService)
-        sb.getService(this, ServletService.class, null);
+      rootServletService = (RootServletService)
+        sb.getService(this, RootServletService.class, null);
       if (rootServletService == null) {
         throw new RuntimeException(
             "Leaf servlet-service unable to"+
-            " obtain (root) ServletService");
+            " obtain RootServletService");
       }
     }
 
     // create and advertise our service
-    // 
-    // NOTE: this overrides the rootServletService
     if (leafSP == null) {
       this.leafSP = new LeafServletServiceProviderImpl();
       leafSP.start();
       sb.addService(ServletService.class, leafSP);
+    }
+
+    // block the RootServletService
+    if (rootBlockerSP == null) { 
+      rootBlockerSP = new RootBlockerSP();
+      sb.addService(RootServletService.class, rootBlockerSP);
     }
   }
 
@@ -136,6 +139,12 @@ implements Component
   }
 
   public void unload() {
+    // unblock the RootServletService
+    if (rootBlockerSP != null) { 
+      sb.revokeService(RootServletService.class, rootBlockerSP);
+      rootBlockerSP = null;
+    }
+
     // revoke our service
     if (leafSP != null) {
       leafSP.stop();
@@ -146,7 +155,7 @@ implements Component
     // release the root servlet service
     if (rootServletService != null) {
       sb.releaseService(
-          this, ServletService.class, rootServletService);
+          this, RootServletService.class, rootServletService);
       rootServletService = null;
     }
 
@@ -338,4 +347,21 @@ implements Component
         }
       }
   }
+
+  private static final class RootBlockerSP
+    implements ServiceProvider {
+      private final Service NULL = new NullService() {};
+      public Object getService(
+          ServiceBroker sb, Object requestor, Class serviceClass) {
+        if (RootServletService.class.isAssignableFrom(serviceClass)) {
+          return NULL; // service blocker!
+        } else {
+          return null;
+        }
+      }
+      public void releaseService(
+          ServiceBroker sb, Object requestor, 
+          Class serviceClass, Object service) {
+      }
+    }
 }

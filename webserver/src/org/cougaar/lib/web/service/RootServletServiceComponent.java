@@ -46,7 +46,6 @@ import org.cougaar.core.component.ServiceProvider;
 import org.cougaar.core.node.NodeControlService;
 import org.cougaar.core.node.NodeIdentificationService;
 import org.cougaar.core.service.LoggingService;
-import org.cougaar.core.service.ServletService;
 import org.cougaar.core.service.wp.WhitePagesService;
 import org.cougaar.lib.web.arch.ServletRegistry;
 import org.cougaar.lib.web.arch.root.GlobalRegistry;
@@ -57,13 +56,14 @@ import org.cougaar.lib.web.arch.server.ServletEngine;
 import org.cougaar.util.Parameters;
 
 /**
- * A root-level (Node) <code>Component</code> that adds a
- * <code>ServiceProvider</code> for <code>ServletService</code>, 
- * which is be used to register <code>Servlet</code>s.
+ * A node component that advertises the root-level
+ * <code>RootServletService</code>, which is used by the agent-level
+ * <code>ServletService</code> providers.
  * <p>
- * For example, Node "N" can create a new root-level ServletService 
- * its children.  When a child, such as Agent "A", requests
- * ServletService it will be able to register itself as "/$A/".
+ * For example, node "N" creates the new root-level
+ * RootServletService for all agents.  Agent "A" obtains the
+ * RootServletService, registers itself as "/$A/", and advertises
+ * the agent's internal ServletService.
  * <p>
  * For HTTPS the "cougaar.rc" must contain:<pre>
  *   org.cougaar.web.keystore=FILENAME
@@ -133,7 +133,7 @@ import org.cougaar.util.Parameters;
  *   for "org.cougaar.web.keypass=PASSWORD".
  * </pre>
  *
- * @see ServletService
+ * @see RootServletService
  */
 public class RootServletServiceComponent 
 extends org.cougaar.util.GenericStateModelAdapter
@@ -372,7 +372,7 @@ implements Component
 
     // create and advertise our service
     this.rootSP = new RootServletServiceProviderImpl();
-    sb.addService(ServletService.class, rootSP);
+    sb.addService(RootServletService.class, rootSP);
   }
 
   public void unload() {
@@ -380,7 +380,7 @@ implements Component
     try {
       // revoke our service
       if (rootSP != null) {
-        sb.revokeService(ServletService.class, rootSP);
+        sb.revokeService(RootServletService.class, rootSP);
         rootSP = null;
       }
 
@@ -566,7 +566,7 @@ implements Component
   }
 
   /**
-   * Service provider for our <code>ServletService</code>.
+   * Service provider for our <code>RootServletService</code>.
    */
   private class RootServletServiceProviderImpl
   implements ServiceProvider {
@@ -576,11 +576,11 @@ implements Component
         Object requestor, 
         Class serviceClass) {
       // create a new service instance
-      if (serviceClass == ServletService.class) {
+      if (serviceClass == RootServletService.class) {
         return new RootServletServiceImpl();
       } else {
         throw new IllegalArgumentException(
-            "ServletService does not provide a service for: "+
+            "RootServletService does not provide a service for: "+
             serviceClass);
       }
     }
@@ -602,7 +602,7 @@ implements Component
     }
 
     private class RootServletServiceImpl
-    implements ServletService {
+    implements RootServletService {
 
       // List of paths registered by this requestor; typically a 
       // tiny list.
