@@ -1,0 +1,7 @@
+2003-03-12  Ray Tomlinson  <RTomlinson@bbn.com>
+
+	* org/cougaar/lib/web/service/RootServletServiceComponent.java: 
+	Bug #2658 -- Components incompatible with automatic service revocation feature
+	Test for null service before trying to use it.
+
+
