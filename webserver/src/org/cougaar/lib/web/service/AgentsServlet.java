@@ -23,10 +23,10 @@ package org.cougaar.lib.web.service;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 import javax.servlet.Servlet;
 import javax.servlet.ServletConfig;
@@ -50,45 +50,84 @@ import org.cougaar.lib.web.arch.root.GlobalRegistry;
  *       is the root.  If the suffix doesn't start with ".",
  *       the substring starting at the first "." is used, and
  *       if there is no "." then the root (".") is used.</li>
- *   <li>"?format=html" -- generate an html page (default)</li>
- *   <li>"?format=text  -- generate plain text, one agent name
- *       per line</li>
- *   <li>"?format=input -- generate an HTML text form for
- *       typing in an agent name, plus a link to the
- *       "?format=select" page.  See the javascript notes
- *       below.</li>
- *   <li>"?format=select  -- generate an interactive html form
- *       that uses javascript reloading.  This can be embedded
- *       in an html frame or popup window.  The selected name
- *       can be accessed by using javascript:<pre>
- *         var name = top.<i>frame</i>.document.agent.name.value;
- *       </pre>  This only works if both frames were generated
- *       by the same <i>host:port</i>, otherwise javascript will
- *       throw a "permission denied" error.</li>
- *   <li>"?sorted=true  -- sort the names in alphabetical order
- *       (default)</li>
- *   <li>"?sorted=false" -- don't sort the names</li>
+ *   <li>"?format=<i>text</i>" -- specify the output format,
+ *        where the options are:
+ *        <ul>
+ *          <li>"html" (default)</li>
+ *          <li>"text" for plain text, one agent name per line</li>
+ *          <li>"input" for HTML text form for typing in an agent
+ *              name, plus a link to the "?format=select" page.
+ *              See the javascript notes below.</li>
+ *          <li>"select" for an interactive html form that uses
+ *              javascript reloading.  This can be embedded in an
+ *              html frame or popup window.  The selected name
+ *              can be accessed by using javascript:<pre>
+ *              var name = top.<i>frame</i>.document.agent.name.value;
+ *              </pre>  This only works if both frames were generated
+ *              by the same <i>host:port</i>, otherwise javascript will
+ *              throw a "permission denied" error.</li>
+ *        </ul></li> 
+ *   <li>"?depth=<i>int</i> -- if the suffix is specified, this
+ *       limits the recursion depth, where -1 is no limit (default
+ *       is specified by the "-Dorg.cougaar.lib.web.list.depth"
+ *       system property, which defaults to 1)</li>
+ *   <li>"?size=<i>int</i> -- limit the list length, where -1 is
+ *       no limit (default is specified by the
+ *       "-Dorg.cougaar.lib.web.list.size" system property,
+ *       which defaults to -1)</li>
+ *   <li>"?time=<i>long</i> -- if the suffix is specified, this
+ *       limits any single lookup time in milliseconds, where 0
+ *       is no limit and -1 is cache-only (default is specified by
+ *       the "-Dorg.cougaar.lib.web.list.timeout" system property,
+ *       which defaults to 0)</li>
+ *   <li>"?sorted=<i>boolean</i>  -- sort the names in alphabetical
+ *       order (default is "true")</li>
+ *   <li>"?split=<i>boolean</i>  -- for "?format=html", should links
+ *       be split along hierarchy levels (default is "true")</li>
  *   <li>"?scope=all"   -- backwards compatibility for listing
  *       agents, equivalent to "?suffix=."</li>
  * </ul>
  * <p>
  * For example: "/agents?suffix=.&amp;format=text"
  * <p>
- * Note this nice feature: With the normal "/$name" redirects
- * and this "/agents" support, the client can request
- * "/$name/agents" to list all co-located agents, regardless of
- * where the named agent happens to be located.
+ * Note this nice feature: With the normal "/$name" redirects and this
+ * servlet, the client can request "/$name/agents" to list all
+ * co-located agents, regardless of where the named agent happens to
+ * be located.
  *
+ * @property org.cougaar.lib.web.list.split
+ *   "/agents" servlet boolean to split HTML links by "." separator
+ *   for per-level "?suffix=" links.  Defaults to "true".
+ * @property org.cougaar.lib.web.list.depth
+ *   "/agents" servlet recursion depth for white pages listings,
+ *   where -1 indicates no limit.  Defaults to 1.
+ * @property org.cougaar.lib.web.list.size
+ *   "/agents" servlet size limit for white pages listings,
+ *   where -1 indicates no limit.  Defaults to -1.
  * @property org.cougaar.lib.web.list.timeout
- *   Timeout in millseconds for white pages listings, where 0
- *   indicates no timeout.  Defaults to 0.
+ *   "/agents" servlet timeout in millseconds for white pages
+ *   listings, where -1 indicates block forever.  Defaults to -1.
  */
 public class AgentsServlet implements Servlet {
 
-  private static final long LIST_TIMEOUT =
+  private static final boolean SPLIT =
+    "true".equals(System.getProperty(
+          "org.cougaar.lib.web.list.split",
+          "true"));
+  private static final int DEPTH =
+    Integer.getInteger(
+        "org.cougaar.lib.web.list.depth",
+        1).intValue();
+  private static final int SIZE =
+    Integer.getInteger(
+        "org.cougaar.lib.web.list.size",
+        -1).intValue();
+  private static final long TIME =
     Long.getLong(
         "org.cougaar.lib.web.list.timeout",
-        0).longValue();
+        -1).longValue();
+
+  private static final String path = "/agents";
 
   // read-only registries:
   private final ServletRegistry localReg;
@@ -121,341 +160,520 @@ public class AgentsServlet implements Servlet {
       throw new ServletException("non-HTTP request or response");
     }
 
-    handle(httpReq, httpRes);
+    MyHandler h = new MyHandler(localReg, globReg);
+    h.execute(httpReq, httpRes);
   }
 
-  private final void handle(
-      HttpServletRequest req,
-      HttpServletResponse res) throws ServletException, IOException {
-    // assert ("/agents".equals(req.getRequestURI()));
+  private static class MyHandler {
 
-    // scan url-parameters for:
-    //   "?format=[text|html|select]"
-    //   "?sorted=[true|false]"
-    //   "?suffix=[text]"
+    private final ServletRegistry localReg;
+    private final GlobalRegistry globReg;
 
-    // html v.s. plain-text response
-    String format = req.getParameter("format");
-    boolean useHtml = (!("text".equals(format)));
-    boolean useInput = "input".equals(format);
-    boolean useSelect = "select".equals(format);
-    // sorted v.s. unsorted response
-    boolean sorted = (!("false".equals(req.getParameter("sorted"))));
-    // global url-encoded suffix (default is "")
-    String encSuffix = req.getParameter("suffix");
-    String encName = encSuffix;
-    boolean isLocal = (encSuffix == null || encSuffix.length() == 0);
-    if (isLocal) {
-      encSuffix = ".";
-    } else {
-      int j = encSuffix.indexOf('.');
-      if (j < 0) {
+    private String encSuffix;
+    private String encName;
+    private boolean isLocal;
+
+    private boolean useHtml;
+    private boolean useInput;
+    private boolean useSelect;
+
+    private int depthLimit;
+    private int sizeLimit;
+    private long timeLimit;
+
+    private boolean sorted;
+    private boolean split;
+
+    private String serverName;
+    private int serverPort;
+
+    public MyHandler(
+        ServletRegistry localReg,
+        GlobalRegistry globReg) {
+      this.localReg = localReg;
+      this.globReg = globReg;
+    }
+
+    public void execute(
+        HttpServletRequest req, 
+        HttpServletResponse res) throws IOException {
+      parseParams(req);
+      List names = new ArrayList();
+      Limit lim = listNames(names);
+      showNames(res, names, lim);
+    }
+
+    private void parseParams(HttpServletRequest req) {
+      // global url-encoded suffix (default is "")
+      encSuffix = req.getParameter("suffix");
+      encName = encSuffix;
+      isLocal = (encSuffix == null || encSuffix.length() == 0);
+      if (isLocal) {
         encSuffix = ".";
-      } else if (j == 0) {
-        encName = null;
       } else {
-        encSuffix = encSuffix.substring(j);
+        int j = encSuffix.indexOf('.');
+        if (j < 0) {
+          encSuffix = ".";
+        } else if (j == 0) {
+          encName = null;
+        } else {
+          encSuffix = encSuffix.substring(j);
+        }
       }
+
+      // html v.s. plain-text response
+      String format = req.getParameter("format");
+      useHtml = (!("text".equals(format)));
+      useInput = "input".equals(format);
+      useSelect = "select".equals(format);
+
+      // limits
+      String s_depthLimit = req.getParameter("depth"); 
+      depthLimit = 
+        (s_depthLimit == null ?
+         (DEPTH) :
+         Integer.parseInt(s_depthLimit));
+      String s_sizeLimit = req.getParameter("size"); 
+      sizeLimit = 
+        (s_sizeLimit == null ?
+         (SIZE) :
+         Integer.parseInt(s_sizeLimit));
+      String s_timeLimit = req.getParameter("time"); 
+      timeLimit = 
+        (s_timeLimit == null ?
+         (TIME) :
+         Long.parseLong(s_timeLimit));
+
+      // sorted v.s. unsorted response
+      sorted = (!("false".equals(req.getParameter("sorted"))));
+
+      // split HTML links
+      String s_split = req.getParameter("split");
+      split = (s_split == null ? SPLIT : "true".equals(s_split));
+
+      // backwards compatibility:
+      if ("all".equals(req.getParameter("scope"))) {
+        isLocal = false;
+      }
+
+      // server name & port
+      serverName = req.getServerName();
+      serverPort = req.getServerPort();
     }
 
-    // backwards compatibility:
-    if ("all".equals(req.getParameter("scope"))) {
-      isLocal = false;
+    private Limit listNames(List toList) {
+      toList.clear();
+      // get the listing
+      if (useInput || sizeLimit == 0) {
+        // none
+        return null; 
+      }
+      Limit lim = null;
+      if (isLocal) {
+        // local names
+        toList.addAll(localReg.listNames());
+      } else {
+        long deadline;
+        if (timeLimit < 0) {
+          // no limit
+          deadline = -1; 
+        } else if (timeLimit == 0) {
+          // cache-only
+          deadline = 0;
+        } else { 
+          deadline = System.currentTimeMillis() + timeLimit;
+          if (deadline <= 0) {
+            // fix wrap-around
+            deadline = -1;
+          }
+        }
+        lim = 
+          listRecurse(
+              toList,
+              encSuffix,
+              0,
+              deadline);
+      }
+      if (sizeLimit > 0) {
+        int i = toList.size();
+        if (i > sizeLimit) {
+          Collections.sort(toList);
+          while (--i >= sizeLimit) {
+            toList.remove(i);
+          }
+          if (lim == null) {
+            lim = Limit.SIZE;
+          }
+        }
+      } else if (sorted) {
+        Collections.sort(toList);
+      }
+      return lim;
     }
 
-    // get the listing
-    Collection names;
-    if (useInput) {
-      names = null;
-    } else if (isLocal) {
-      names = localReg.listNames();
-    } else {
+    // recursive!
+    private Limit listRecurse(
+        List toList, 
+        String encS,
+        int depth,
+        long deadline) {
+      int size = toList.size();
+      if (depthLimit >= 0 && depth >= depthLimit) {
+        // reached max depth, add suffix
+        if (sizeLimit >= 0 && size >= sizeLimit) {
+          return Limit.SIZE;
+        }
+        // obvious depth limit if any entry starts with "."
+        toList.add(encS);
+        return Limit.DEPTH;
+      }
+      // list names at this depth level
+      long t;
+      if (deadline < 0) {
+        // no deadline
+        t = 0;
+      } else if (deadline == 0) {
+        // cache-only
+        t = -1; 
+      } else {
+        t = deadline - System.currentTimeMillis();
+        if (t < 0) {
+          // ran out of time, don't switch to cache-only
+          return new Limit.Failed(null, encS, t, timeLimit);
+        }
+      }
+      Set encNames;
       try {
-        names = globReg.list(encSuffix, LIST_TIMEOUT);
+        encNames = globReg.list(encS, t);
       } catch (Exception e) {
-        names = null;
-        if (useSelect) {
-          // use input field instead of drop-down list
-          useSelect = false;
-          useInput = true;
+        return new Limit.Failed(e, encS, t, timeLimit);
+      }
+      // sort, to preserve sizeLimit order
+      //
+      // note that this sort controls the recursion order, which will
+      // sort by suffix.  If "&sort=true" is specified then the full
+      // result will be further sorted by prefix.
+      List l = new ArrayList(encNames);
+      Collections.sort(l);
+      Limit lim = null;
+      for (int i = 0, n = l.size(); i < n; i++) {
+        String s = (String) l.get(i);
+        if (s == null) {
+          continue;
+        }
+        if (sizeLimit >= 0 && size >= sizeLimit) {
+          // reached max count
+          return Limit.SIZE;
+        }
+        if (s.length() > 0 && s.charAt(0) == '.') {
+          // recurse!
+          Limit lim2 = 
+            listRecurse(
+                toList,
+                s,
+                (depth + 1),
+                deadline);
+          if (lim2 != null && lim2 != Limit.DEPTH) {
+            return lim2;
+          }
+          if (lim == null) {
+            lim = lim2;
+          }
+          size = toList.size();
+        } else {
+          toList.add(s);
+        }
+      }
+      return lim;
+    }
+
+    private void showNames(
+        HttpServletResponse res,
+        List names,
+        Limit lim) throws IOException {
+      if (lim == Limit.DEPTH) {
+        // ignore depth limit, since it's obvious if any entries
+        // start with a "."
+        lim = null;
+      } else if (
+          (lim instanceof Limit.Failed) &&
+          useSelect) {
+        // discard partial results (!)
+        // use input field instead of drop-down list
+        useSelect = false;
+        useInput = true;
+      }
+
+      // write response
+      res.setContentType(
+          (useHtml ? "text/html" : "text/plain"));
+      PrintWriter out = res.getWriter();
+      if (!(useHtml)) {
+        listPlain(out, names);
+      } else if (useInput) {
+        listInput(out);
+      } else if (useSelect) {
+        if (isLocal) {
+          listSelectLocal(out, names);
+        } else {
+          listSelectAll(out, names);
+        }
+      } else {
+        listHTML(out, names, lim);
+      }
+      out.close();
+    }
+
+    private void listPlain(
+        PrintWriter out,
+        List names) {
+      // simple line-by-line output
+      int n = names.size();
+      if (n > 0) {
+        Iterator iter = names.iterator();
+        for (int i = 0; i < n; i++) {
+          String ni = (String) iter.next();
+          out.println(ni);
         }
       }
     }
-    if (names == null) {
-      names = Collections.EMPTY_LIST;
-    }
 
-    if (sorted && !names.isEmpty()) {
-      List l;
-      if (names instanceof List) {
-        l = (List) names;
-      } else {
-        l = new ArrayList(names);
-        names = l;
-      }
-      Collections.sort(l);
-    }
-
-    // write response
-    res.setContentType(
-        (useHtml ? "text/html" : "text/plain"));
-    PrintWriter out = res.getWriter();
-    if (!(useHtml)) {
-      listPlain(out, names);
-    } else if (useInput) {
-      listInput(out, encSuffix, encName, isLocal);
-    } else if (useSelect) {
-      if (isLocal) {
-        listSelectLocal(out, names, encSuffix);
-      } else {
-        listSelectAll(out, names, encSuffix, encName);
-      }
-    } else {
-      listHTML(
-          out, names,
-          isLocal, encSuffix, 
-          req.getServerName(), req.getServerPort());
-    }
-    out.close();
-  }
-  
-  private static final void listPlain(
-      PrintWriter out,
-      Collection names) {
-    // simple line-by-line output
-    int n = names.size();
-    if (n > 0) {
-      Iterator iter = names.iterator();
-      for (int i = 0; i < n; i++) {
-        String ni = (String) iter.next();
-        out.println(ni);
-      }
-    }
-  }
-
-  private static final void listInput(
-      PrintWriter out,
-      String encSuffix,
-      String encName,
-      boolean isLocal) {
-    // text box
-    boolean isName = (encName != null);
-    out.print(
-        "<html><head>\n"+
-        "<script language=\"JavaScript\">\n"+
-        "<!--\n"+
-        "function toSelect() {\n"+
-        "  var val = document.agent.name.value;\n"+
-        "  location.href=\"/agents?format=select&suffix=\"+val;\n"+
-        "}\n"+
-        "// this works on some browsers:\n"+
-        "function noenter() {\n"+
-        "  var key = 0;\n"+
-        "  if (window.event) {\n"+
-        "    if (navigator.appName == 'Netscape') {\n"+
-        "      key = window.event.which;\n"+
-        "    } else {\n"+
-        "      key = window.event.keyCode;\n"+
-        "    }\n"+
-        "  }\n"+
-        "  return (key != 13);\n"+
-        "}\n"+
-        "// -->\n"+
-        "</script>\n"+
+    private void listInput(PrintWriter out) {
+      // text box
+      boolean isName = (encName != null);
+      out.print(
+          "<html><head>\n"+
+          "<script language=\"JavaScript\">\n"+
+          "<!--\n"+
+          "function toSelect() {\n"+
+          "  var val = document.agent.name.value;\n"+
+          "  location.href="+
+          getLink("\"+val+\"", "select")+
+          ";\n"+
+          "}\n"+
+          "// this works on some browsers:\n"+
+          "function noenter() {\n"+
+          "  var key = 0;\n"+
+          "  if (window.event) {\n"+
+          "    if (navigator.appName == 'Netscape') {\n"+
+          "      key = window.event.which;\n"+
+          "    } else {\n"+
+          "      key = window.event.keyCode;\n"+
+          "    }\n"+
+          "  }\n"+
+          "  return (key != 13);\n"+
+          "}\n"+
+          "// -->\n"+
+          "</script>\n"+
         "</head>\n"+
         "<body>\n"+
         "<form name=\"agent\"");
-    // We don't want this target, but some browsers will accept
-    // an ENTER in the text field as a submit.
-    out.print(
-        " target=\"/agents?format=input&suffix="+
-        (isName ? encName : encSuffix)+
-        "\"");
-    out.print(
-        ">\n"+
-        "<input type=\"text\" size=\"20\" name=\"name\" value=\""+
-        (isName ? encName : encSuffix)+
-        "\" onKeypress=\"noenter()\"> "+
-        "<input type=\"button\" value=\"list\""+
-        " onClick=\"toSelect()\">"+
-        "</form></body></html>");
-  }
-
-  private static final void listSelectLocal(
-      PrintWriter out,
-      Collection names,
-      String encSuffix) {
-    // local names
-    out.print(
-        "<html><head>\n"+
-        "<script language=\"JavaScript\">\n"+
-        "<!--\n"+
-        "function selectAgent() {\n"+
-        "  var idx = document.agent.select.selectedIndex;\n"+
-        "  var val = document.agent.select.options[idx].text;\n"+
-        "  document.agent.name.value = val;\n"+
-        "}\n"+
-        "function toText() {\n"+
-        "  var val = document.agent.name.value;\n"+
-        "  location.href=\"/agents?format=input&suffix=\"+val;\n"+
-        "}\n"+
-        "// -->\n"+
-        "</script>\n"+
-        "</head>\n"+
-        "<body>\n"+
-        "<form name=\"agent\" onSubmit=\";\">\n"+
-        "<input type=\"hidden\" name=\"name\" value=\""+
-        encSuffix+"\">\n"+
-        "<select name=\"select\""+
-        " onChange=\"selectAgent()\""+
-        ">\n");
-    // print names
-    int n = names.size();
-    if (n > 0) {
-      Iterator iter = names.iterator();
-      for (int i = 0; i < n; i++) {
-        String ni = (String) iter.next();
-        out.print(
-            "<option>"+ni+"</option>\n");
-      }
+      // We don't want this target, but some browsers will accept
+      // an ENTER in the text field as a submit.
+      out.print(
+          " target="+
+          getLink(
+            (isName ? encName : encSuffix),
+            "input"));
+      out.print(
+          ">\n"+
+          "<input type=\"text\" size=\"20\" name=\"name\" value=\""+
+          (isName ? encName : encSuffix)+
+          "\" onKeypress=\"noenter()\"> "+
+          "<input type=\"button\" value=\"list\""+
+          " onClick=\"toSelect()\">"+
+          "</form></body></html>");
     }
-    out.print(
-        "</select> \n"+
-        "<input type=\"button\" value=\"text\""+
-        " onClick=\"toText()\">"+
-        "</form>\n"+
-        "</body></html>\n");
-  }
 
-  private static final void listSelectAll(
-      PrintWriter out,
-      Collection names,
-      String encSuffix,
-      String encName) {
-    // interactive javascript form
-    boolean isName = (encName != null);
-    boolean isRoot = ".".equals(encSuffix);
-    out.print(
-        "<html><head>\n"+
-        "<script language=\"JavaScript\">\n"+
-        "<!--\n"+
-        "function selectAgent() {\n"+
-        "  var idx = document.agent.select.selectedIndex;\n"+
-        "  var val = document.agent.select.options[idx].text;\n"+
-        "  document.agent.name.value = val;\n"+
-        "  if (val.length > 0 &&\n"+
-        "      val.charAt(0) == '.' &&\n"+
-        "      val != \""+encSuffix+"\") {\n"+
-        "    location.href=\"/agents?format=select&suffix=\"+val;\n"+
-        "  }\n"+
-        "}\n"+
-        "function toText() {\n"+
-        "  var val = document.agent.name.value;\n"+
-        "  location.href=\"/agents?format=input&suffix=\"+val;\n"+
-        "}\n"+
-        "// -->\n"+
-        "</script>\n"+
-        "</head>\n"+
-        "<body>\n"+
+    private void listSelectLocal(
+        PrintWriter out,
+        List names) {
+      // local names
+      out.print(
+          "<html><head>\n"+
+          "<script language=\"JavaScript\">\n"+
+          "<!--\n"+
+          "function selectAgent() {\n"+
+          "  var idx = document.agent.select.selectedIndex;\n"+
+          "  var val = document.agent.select.options[idx].text;\n"+
+          "  document.agent.name.value = val;\n"+
+          "}\n"+
+          "function toText() {\n"+
+          "  var val = document.agent.name.value;\n"+
+          "  location.href="+
+          getLink("\"+val+\"", "input")+
+          ";\n"+
+          "}\n"+
+          "// -->\n"+
+          "</script>\n"+
+          "</head>\n"+
+          "<body>\n"+
+          "<form name=\"agent\" onSubmit=\";\">\n"+
+          "<input type=\"hidden\" name=\"name\" value=\""+
+          encSuffix+"\">\n"+
+          "<select name=\"select\""+
+          " onChange=\"selectAgent()\""+
+        ">\n");
+      // print names
+      int n = names.size();
+      if (n > 0) {
+        Iterator iter = names.iterator();
+        for (int i = 0; i < n; i++) {
+          String ni = (String) iter.next();
+          out.print(
+              "<option>"+ni+"</option>\n");
+        }
+      }
+      out.print(
+          "</select> \n"+
+          "<input type=\"button\" value=\"text\""+
+          " onClick=\"toText()\">"+
+          "</form>\n"+
+          "</body></html>\n");
+    }
+
+    private void listSelectAll(
+        PrintWriter out,
+        List names) {
+      // interactive javascript form
+      boolean isName = (encName != null);
+      boolean isRoot = ".".equals(encSuffix);
+      out.print(
+          "<html><head>\n"+
+          "<script language=\"JavaScript\">\n"+
+          "<!--\n"+
+          "function selectAgent() {\n"+
+          "  var idx = document.agent.select.selectedIndex;\n"+
+          "  var val = document.agent.select.options[idx].text;\n"+
+          "  document.agent.name.value = val;\n"+
+          "  if (val.length > 0 &&\n"+
+          "      val.charAt(0) == '.' &&\n"+
+          "      val != \""+encSuffix+"\") {\n"+
+          "    location.href="+
+          getLink("\"+val+\"", "select")+
+          ";\n"+
+          "  }\n"+
+          "}\n"+
+          "function toText() {\n"+
+          "  var val = document.agent.name.value;\n"+
+          "  location.href="+
+          getLink("\"+val+\"", "input")+
+          ";\n"+
+          "}\n"+
+          "// -->\n"+
+          "</script>\n"+
+          "</head>\n"+
+          "<body>\n"+
         "<form name=\"agent\" onSubmit=\";\">\n"+
         "<input type=\"hidden\" name=\"name\" value=\""+
         (isName ? encName : encSuffix)+
         "\">"+
         "<select name=\"select\""+
-      " onChange=\"selectAgent()\""+
-      ">\n");
-    // print parents back to root
-    out.print(
-        "<option"+
-        ((isRoot && !isName) ? " selected" : "")+
-        ">.</option>\n");
-    if (!isRoot) {
-      // assert (encSuffix.startsWith("."));
-      for (int j = encSuffix.length(); j > 0; ) {
-        j = encSuffix.lastIndexOf('.', j-1);
-        String s = encSuffix.substring(j);
-        out.print(
-            "<option"+
-            ((j == 0 && !isName) ? " selected" : "") +
-            ">"+s+"</option>\n");
-      }
-    }
-    // print names
-    int n = names.size();
-    if (n > 0) {
-      Iterator iter = names.iterator();
-      for (int i = 0; i < n; i++) {
-        String ni = (String) iter.next();
-        out.print(
-            "<option"+
-            ((isName && encName.equals(ni)) ? " selected" : "")+
-            ">"+ni+"</option>\n");
-      }
-    }
-    out.print(
-        "</select>\n"+
-        "<input type=\"button\" value=\"text\""+
-        " onClick=\"toText()\">"+
-        "</form></body></html>\n");
-  }
-
-  private static final void listHTML(
-      PrintWriter out,
-      Collection names,
-      boolean isLocal,
-      String encSuffix,
-      String serverName,
-      int serverPort) {
-    // pretty HTML
-    String title;
-    String suffixLinks = null;
-    if (isLocal) {
-      title =
-        "Agent on Host ("+
-        serverName+":"+serverPort+
-        ")";
-    } else {
-      if (".".equals(encSuffix)) {
-        title = 
-          "Agents at the Root (\""+
-          "<a href=\"/agents?suffix=.\">.</a>"+
-          "\")";
-      } else {
-        suffixLinks = createSuffixLinks(encSuffix);
-        title = "Agents with Suffix (\""+suffixLinks+"\")";
-      }
-    }
-    out.print("<html><head><title>");
-    out.print(title);
-    out.print(
-        "</title></head>\n"+
-        "<body><p><h1>");
-    out.print(title);
-    out.print("</h1>\n");
-    int n = names.size();
-    if (n > 0) {
-      out.print("<table border=\"0\">\n");
-      Iterator iter = names.iterator();
-      for (int i = 0; i < n; i++) {
-        String ni = (String) iter.next();
-        out.print(
-            "<tr><td align=\"right\">&nbsp;"+
-            (i+1)+".&nbsp;</td><td align=\"right\">");
-        int j = ni.indexOf('.');
-        String head = 
-          (j > 0 ? ni.substring(0, j) : j < 0 ? ni : null);
-        if (head != null) {
-          // looks like:  head(\.tail)?
-          out.print("<a href=\"/$"+ni+"/list\">"+head+"</a>");
+        " onChange=\"selectAgent()\""+
+        ">\n");
+      // print parents back to root
+      out.print(
+          "<option"+
+          ((isRoot && !isName) ? " selected" : "")+
+          ">.</option>\n");
+      if (!isRoot) {
+        // assert (encSuffix.startsWith("."));
+        for (int j = encSuffix.length(); j > 0; ) {
+          j = encSuffix.lastIndexOf('.', j-1);
+          String s = encSuffix.substring(j);
+          out.print(
+              "<option"+
+              ((j == 0 && !isName) ? " selected" : "") +
+              ">"+s+"</option>\n");
         }
-        if (isLocal) {
-          // possible different suffix per entry
-          if (j > 0) {
-            String tail = ni.substring(j);
-            String links = createSuffixLinks(tail);
-            out.print(links);
-          }
+      }
+      // print names
+      int n = names.size();
+      if (n > 0) {
+        Iterator iter = names.iterator();
+        for (int i = 0; i < n; i++) {
+          String ni = (String) iter.next();
+          out.print(
+              "<option"+
+              ((isName && encName.equals(ni)) ? " selected" : "")+
+              ">"+ni+"</option>\n");
+        }
+      }
+      out.print(
+          "</select>\n"+
+          "<input type=\"button\" value=\"text\""+
+          " onClick=\"toText()\">"+
+          "</form></body></html>\n");
+    }
+
+    private void listHTML(
+        PrintWriter out,
+        List names,
+        Limit lim) {
+      // pretty HTML
+      String title;
+      String suffixLinks = null;
+      if (isLocal) {
+        title =
+          "Agent on Host ("+
+          serverName+":"+serverPort+
+          ")";
+      } else {
+        if (".".equals(encSuffix)) {
+          title = "Agents at the Root (\"";
         } else {
+          suffixLinks = createSuffixLinks(encSuffix);
+          title = "Agents with Suffix (\""+suffixLinks;
+        }
+        title +=
+            "<a href="+
+            getLink(".", "html")+
+            ">.</a>"+
+            "\")";
+      }
+      out.print("<html><head><title>");
+      out.print(title);
+      out.print(
+          "</title></head>\n"+
+          "<body><p><h1>");
+      out.print(title);
+      out.print("</h1>\n");
+      int n = names.size();
+      if (n > 0) {
+        out.print("<table border=\"0\">\n");
+        for (int i = 0; i < n; i++) {
+          String ni = (String) names.get(i);
+          out.print(
+              ((i > 0) ? "</td></tr>\n" : "")+
+              "<tr><td align=\"right\">&nbsp;"+
+              (i + 1)+".&nbsp;</td><td align=\"right\">");
+          int j = ni.indexOf('.');
+          if (!split) {
+            // use simple links to the complete names
+            out.print(
+                "<a href="+
+                ((j == 0) ?
+                 (getLink(ni, "html")) :
+                 ("\"/$"+ni+"/list\""))+
+                ">"+ni+"</a>");
+            continue;
+          }
+          // split names into directory links
+          String head = 
+            (j > 0 ? ni.substring(0, j) : j < 0 ? ni : null);
+          if (head != null) {
+            // looks like:  head(\.tail)?
+            out.print("<a href=\"/$"+ni+"/list\">"+head+"</a>");
+          }
+          if (isLocal || depthLimit > 1) {
+            // possible different suffix per entry
+            if (j >= 0) {
+              String tail = ni.substring(j);
+              String links = createSuffixLinks(tail);
+              out.print(links);
+            }
+            continue;
+          }
           if (j == 0) {
             // all have the same suffix: \.?mid(\.suffix)
             int k = ni.indexOf('.', 1);
@@ -463,61 +681,89 @@ public class AgentsServlet implements Servlet {
               (k > 0 ? ni.substring(0, k) : k < 0 ? ni : null);
             if (mid != null) {
               out.print(
-                  "<a href=\"/agents?suffix="+
-                  ni+"\">"+mid+"</a>");
+                  "<a href="+
+                  getLink(ni, "html")+
+                  ">"+mid+"</a>");
             }
           }
           if (suffixLinks != null) {
             out.print(suffixLinks);
           }
         }
-        out.print("</td></tr>\n");
-      }
-      out.print("</table>\n");
-    } else {
-      out.print("<font color=\"red\">zero agents found</font>");
-    }
-    out.print(
-        "<p>\n"+
-        "<a href=\"/agents\">Agents on host ("+
-        serverName+":"+serverPort+
-        ")</a><br>\n"+
-        "<a href=\"/agents?suffix=.\""+
-        ">Agents at the root (.)</a><br>"+
-        "</body></html>\n");
-  }
-
-  /**
-   * Given a suffix generate an HTML href list.
-   * <p>
-   * For example, given:<pre>
-   *   .a.b.c
-   * </pre>Generate:<pre>
-   *   &lt;a href="/agents?suffix=.a.b.c"&gt;.a&lt;/a&gt; <i>+</i>
-   *   &lt;a href="/agents?suffix=.b.c"&gt;.b&lt;/a&gt; <i>+</i>
-   *   &lt;a href="/agents?suffix=.c"&gt;.c&lt;/a&gt;
-   * </pre>
-   */
-  private static final String createSuffixLinks(String encSuffix) {
-    // assert (encSuffix.charAt(0) == '.');
-    StringBuffer buf = new StringBuffer();
-    int len = encSuffix.length();
-    for (int j = 0; j < len; ) {
-      int k = encSuffix.indexOf('.', j+1);
-      if (k < 0) {
-        if (j >= len) {
-          break;
+        if (lim != null) {
+          out.print(
+              "<tr><td>&nbsp;</td><td align=\"left\">"+
+              "<font color=\"red\">"+
+              lim+
+              "</font></td></tr>");
         }
-        k = len;
+        out.print("</table>\n");
+      } else {
+        out.print(
+            "<font color=\"red\">zero agents found"+
+            (lim == null ? "" : ("<br>"+lim))+
+            "</font>");
       }
-      buf.append("<a href=\"/agents?suffix=");
-      buf.append(encSuffix.substring(j));
-      buf.append("\">");
-      buf.append(encSuffix.substring(j,k));
-      buf.append("</a>");
-      j = k;
+      out.print(
+          "<p>\n"+
+          "<a href="+
+          getLink(null, "html")+
+          ">Agents on host ("+
+          serverName+":"+serverPort+
+          ")</a><br>\n"+
+          "<a href="+
+          getLink(".", "html")+
+          ">Agents at the root (.)</a><br>"+
+          "</body></html>\n");
     }
-    return buf.toString();
+
+    /** Create URI back to this servlet */
+    private String getLink(String suffix, String format) { 
+      return
+        "\""+
+        "/agents"+
+        "?suffix="+(suffix == null ? "" : suffix)+
+        "&format="+format+
+        "&depth="+depthLimit+
+        "&size="+sizeLimit+
+        "&time="+timeLimit+
+        "&sorted="+sorted+
+        "&split="+split+
+        "\"";
+    }
+
+    /**
+     * Given a suffix generate an HTML href list.
+     * <p>
+     * For example, given:<pre>
+     *   .a.b.c
+     * </pre>Generate:<pre>
+     *   &lt;a href="?suffix=.a.b.c"&gt;.a&lt;/a&gt; <i>+</i>
+     *   &lt;a href="?suffix=.b.c"&gt;.b&lt;/a&gt; <i>+</i>
+     *   &lt;a href="?suffix=.c"&gt;.c&lt;/a&gt;
+     * </pre>
+     */
+    private String createSuffixLinks(String encS) {
+      // assert (encS.charAt(0) == '.');
+      StringBuffer buf = new StringBuffer();
+      int len = encS.length();
+      for (int j = 0; j < len; ) {
+        int k = encS.indexOf('.', j+1);
+        if (k < 0) {
+          if (j >= len) {
+            break;
+          }
+          k = len;
+        }
+        buf.append("<a href=");
+        buf.append(getLink(encS.substring(j), "html"));
+        buf.append(">");
+        buf.append(encS.substring(j,k));
+        buf.append("</a>");
+        j = k;
+      }
+      return buf.toString();
+    }
   }
 
   //
@@ -538,4 +784,41 @@ public class AgentsServlet implements Servlet {
     // ignore
   }
 
+  private static abstract class Limit {
+    public static final Limit SIZE = new Limit() {
+      public String toString() {
+        return "Reached size limit";
+      }
+    };
+    public static final Limit DEPTH = new Limit() {
+      public String toString() {
+        return "Reached depth limit";
+      }
+    };
+
+    public static class Failed extends Limit {
+      public final Exception e;
+      public final String encS;
+      public long timeout;
+      public long timeLimit;
+      public Failed(
+          Exception e,
+          String encS,
+          long timeout,
+          long timeLimit) {
+        this.e = e;
+        this.encS = encS;
+        this.timeout = timeout;
+        this.timeLimit = timeLimit;
+      }
+      public String toString() {
+        return 
+          "Failed list (suffix="+encS+
+          ", timeout="+timeout+
+          ", timeLimit="+timeLimit+
+          (e == null ? "" : ", exception="+e.getMessage())+
+          ")";
+      }
+    }
+  }
 }
