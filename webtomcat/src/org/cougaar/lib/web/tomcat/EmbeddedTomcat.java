@@ -69,8 +69,11 @@ public class EmbeddedTomcat extends Catalina {
    */
   public void configure(Map options) {
     if (options != null) {
-      this.debug = 
-        "true".equals(options.get("debug"));
+      // DISABLED Tomcat logger debugging:
+      // See Cougaar bug 1402.
+      // Fix postponed to after 9.4 release.
+      //
+      //this.debug = "true".equals(options.get("debug"));
     }
   }
 
