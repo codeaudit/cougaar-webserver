@@ -178,9 +178,21 @@ implements Servlet {
     }
 
     // look for "/$[~]name[/*]"
-    if (name.charAt(0) == '~') {
+    char ch = name.charAt(0); 
+    int j;
+    if (ch == '~') {
+      j = 1;
+    } else if (
+        (ch == '%') &&
+         name.regionMatches(1, "7E", 0, 2)) {
+      // wget encodes "~" as "%7E"
+      j = 3;
+    } else {
+      j = 0;
+    }
+    if (j > 0) {
       // check to make sure we contain the name
-      name = name.substring(1);
+      name = name.substring(j);
       if (name.length() > 0 &&
           servletReg.get(name) == null) {
         return unknownNameServlet;

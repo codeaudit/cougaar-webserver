@@ -93,9 +93,16 @@ implements Servlet {
     String path = req.getRequestURI();
     // assert ((path != null) && (path.startsWith("/$")))
     int startIdx = 2; 
-    if (startIdx < path.length() &&
-        path.charAt(startIdx) == '~') {
-      startIdx++;
+    if (startIdx < path.length()) {
+      char ch = path.charAt(startIdx);
+      if (ch == '~') {
+        startIdx++;
+      } else if (
+          (ch == '%') &&
+          path.regionMatches(startIdx + 1, "7E", 0, 2)) {
+        // wget encodes "~" as "%7E"
+        startIdx += 3;
+      }
     }
     int sepIdx = path.indexOf('/', startIdx);
     if (sepIdx < 0) {
