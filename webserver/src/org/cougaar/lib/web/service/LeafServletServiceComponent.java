@@ -77,7 +77,15 @@ implements Component
     //
     // This is done to protect raw-names such as "x y",
     // which would produce invalid "../$x y/.." URLs.
-    this.name = java.net.URLEncoder.encode(rawName);
+    String encName;
+    try {
+      encName = java.net.URLEncoder.encode(rawName, "UTF-8");
+    } catch (Exception e) {
+      throw new IllegalArgumentException(
+          "Illegal name \""+rawName+"\": "+e.getMessage());
+    }
+
+    this.name = encName;
   }
 
   public void load() {
