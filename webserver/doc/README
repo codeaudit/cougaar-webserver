@@ -7,7 +7,7 @@ Contains two packages:
 
   org.cougaar.lib.web.service:
     Component implementations of core's 
-    "org.cougaar.core.servlet.ServletService" API, which
+    "org.cougaar.core.service.ServletService" API, which
     uses the above "org.cougaar.lib.web.arch" classes
     and core classes.
 

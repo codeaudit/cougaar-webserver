@@ -25,7 +25,7 @@ import java.util.*;
 import javax.servlet.Servlet;
 
 import org.cougaar.core.component.*;
-import org.cougaar.core.servlet.ServletService;
+import org.cougaar.core.service.ServletService;
 
 import org.cougaar.lib.web.arch.ServletRegistry;
 import org.cougaar.lib.web.arch.leaf.*;

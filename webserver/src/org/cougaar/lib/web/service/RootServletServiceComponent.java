@@ -30,7 +30,7 @@ import javax.servlet.Servlet;
 import org.cougaar.core.component.*;
 import org.cougaar.core.service.LoggingService;
 import org.cougaar.core.service.NamingService;
-import org.cougaar.core.servlet.ServletService;
+import org.cougaar.core.service.ServletService;
 import org.cougaar.core.node.NodeControlService;
 
 import org.cougaar.lib.web.arch.ServletRegistry;
