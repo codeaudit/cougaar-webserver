@@ -158,14 +158,16 @@ implements GlobalRegistry {
     }
 
     try {
-      NamingEnumeration en = ctx.list("");
+      NamingEnumeration en = ctx.listBindings("");
       while (en.hasMoreElements()) {
-        NameClassPair ncp = (NameClassPair) en.nextElement();
-        if (!(ncp.getClassName().equals(GLOBAL_ENTRY_CLASSNAME))) {
+        Binding binding = (Binding) en.nextElement();
+        if (!(binding.getClassName().equals(GLOBAL_ENTRY_CLASSNAME))) {
           continue;
         }
-        toList.add(ncp.getName());
+        GlobalEntry ge = (GlobalEntry) binding.getObject();
+        toList.add(ge.getName());
       }
+    
     } catch (NamingException ne) {
       throw new IOException(ne.getMessage());
     }
