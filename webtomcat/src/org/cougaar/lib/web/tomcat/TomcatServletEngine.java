@@ -23,7 +23,6 @@ package org.cougaar.lib.web.tomcat;
 import java.io.File;
 import java.io.IOException;
 import java.net.BindException;
-import java.net.InetAddress;
 import java.net.URL;
 import javax.servlet.*;
 import javax.servlet.http.*;
@@ -235,11 +234,11 @@ public class TomcatServletEngine
           System.out.println("setting https endpoint: "+httpsC);
         }
         System.out.println(
-            "Starting HTTP server on port: "+httpC.getPort());
+            "Starting HTTP  server on port: "+httpC.getPort());
         et.addEndpoint(
             httpC.getPort(),
-            httpC.getAddress(), 
-            httpC.getHostname());
+            null,
+            null);
       }
 
       if (httpsC != null) {
@@ -255,8 +254,8 @@ public class TomcatServletEngine
         int idx = 
           et.addSecureEndpoint( 
               shc.getPort(), 
-              shc.getAddress(), 
-              shc.getHostname(),
+              null,
+              null,
               null,
               null);
         et.setModuleProperty(
