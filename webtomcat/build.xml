@@ -125,6 +125,8 @@
     <property name="target.sys" value="${TARGETBASE}/sys" />
     <!-- clib is for cougaar compile-time jars (codegen, etc) -->
     <property name="target.clib" value="${TARGETBASE}/clib" />
+    <!-- pmd is for PMD compile-time jars -->
+    <property name="target.pmd" value="${TARGETBASE}/pmd-1.5/lib" />
     <!-- dir is which of lib or clib the jar gets installed to -->
     <property name="target.dir" value="${TARGETBASE}/lib"/>
 
@@ -268,6 +270,27 @@
     </target>
 
     <!-- ========================================================== -->
+    <!-- Test for presence of PMD. Skip PMD targets if not found. -->
+    <!-- ========================================================== -->
+    <target name="pmd" depends="prepare" if="has.pmd">
+      <taskdef name="pmd" classname="net.sourceforge.pmd.ant.PMDTask">
+        <classpath>
+          <pathelement location="${target.pmd}/jaxen-core-1.0-fcs.jar"/>
+          <pathelement location="${target.pmd}/pmd-1.5.jar"/>
+          <pathelement location="${target.pmd}/saxpath-1.0-fcs.jar"/>
+          <pathelement location="${target.pmd}/xercesImpl-2.0.2.jar"/>
+          <pathelement location="${target.pmd}/xmlParserAPIs-2.0.2.jar"/>
+        </classpath>
+      </taskdef>
+      <pmd rulesetfiles="rulesets/basic.xml,rulesets/braces.xml,rulesets/codesize.xml,rulesets/controversial.xml,rulesets/coupling.xml,rulesets/design.xml,rulesets/favorites.xml,rulesets/finalizers.xml,rulesets/imports.xml,rulesets/javabeans.xml,rulesets/junit.xml,rulesets/naming.xml,rulesets/newrules.xml,rulesets/scratchpad.xml,rulesets/strictexception.xml,rulesets/strings.xml,rulesets/unusedcode.xml">
+        <formatter type="html" toFile="${module}_report.html"/>
+        <fileset dir="${src}" >
+          <include name="**/*.java"/>
+        </fileset>
+      </pmd>
+    </target>
+
+    <!-- ========================================================== -->
     <!-- Run RMIC on built classes			                -->
     <!-- ========================================================== -->
     <!-- Mikes build script does: -->
@@ -361,6 +384,7 @@
       <available property="has.dev" file="${dev}"/>
       <available property="has.doc" file="${doc}"/>
       <available property="has.regress" file="${regress}"/>
+      <available property="has.pmd" file="${target.pmd}"/>
       <available property="has.lib" file="${local.lib}"/>
       
       <!-- Create the timestamp -->
