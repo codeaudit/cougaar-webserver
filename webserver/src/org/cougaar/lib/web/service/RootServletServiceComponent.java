@@ -580,6 +580,20 @@ implements Component
           l.clear();
         }
       }
+
+      public int getHttpPort() {
+        return 
+          ((usedHttpConfig != null) ?
+           (usedHttpConfig.getPort()) : 
+           (-1));
+      }
+
+      public int getHttpsPort() {
+        return 
+          ((usedHttpsConfig != null) ?
+           (usedHttpsConfig.getHttpConfig().getPort()) : 
+           (-1));
+      }
     }
   }
 

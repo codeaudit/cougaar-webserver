@@ -138,7 +138,8 @@ implements Component
         configure();
       } catch (Exception e) {
         throw new RuntimeException(
-            "Unable to register \""+name+"\" for Servlet service");
+            "Unable to register \""+name+"\" for Servlet service: "+
+            e.getMessage());
       }
     }
 
@@ -266,6 +267,14 @@ implements Component
             }
             l.clear();
           }
+        }
+
+        public int getHttpPort() {
+          return rootServletService.getHttpPort();
+        }
+
+        public int getHttpsPort() {
+          return rootServletService.getHttpsPort();
         }
       }
   }
