@@ -39,7 +39,6 @@ import java.util.Properties;
 import javax.servlet.Servlet;
 
 import org.cougaar.bootstrap.SystemProperties;
-import org.cougaar.core.component.BindingSite;
 import org.cougaar.core.component.Component;
 import org.cougaar.core.component.ServiceBroker;
 import org.cougaar.core.component.ServiceProvider;
@@ -172,10 +171,7 @@ implements Component
   private int usedHttpPort;
   private int usedHttpsPort;
 
-  public void setBindingSite(BindingSite bs) {
-    // only care about the service broker
-    //this.sb = bs.getServiceBroker();
-  }
+  // ignore "setServiceBroker", we want the node-level service broker
 
   public void setNodeControlService(NodeControlService ncs) {
     if (ncs == null) {

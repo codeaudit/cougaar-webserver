@@ -31,7 +31,6 @@ import java.util.List;
 
 import javax.servlet.Servlet;
 
-import org.cougaar.core.component.BindingSite;
 import org.cougaar.core.component.Component;
 import org.cougaar.core.component.NullService;
 import org.cougaar.core.component.Service;
@@ -66,9 +65,8 @@ implements Component
   private LeafServletServiceProviderImpl leafSP;
   private RootBlockerSP rootBlockerSP;
 
-  public void setBindingSite(BindingSite bs) {
-    // only care about the service broker
-    this.sb = bs.getServiceBroker();
+  public void setServiceBroker(ServiceBroker sb) {
+    this.sb = sb;
   }
 
   public void setParameter(Object o) {
