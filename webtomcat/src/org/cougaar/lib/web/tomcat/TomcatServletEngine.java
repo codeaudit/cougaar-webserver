@@ -41,11 +41,8 @@ import org.apache.tomcat.core.TomcatException;
  * The <tt>TomcatServletEngine(String[])</tt> constructor requires 
  * one argument:
  * <ol>
- *   </li>the base Tomcat home directory</li>
+ *   </li>the full path to the Tomcat base directory</li>
  * </ol><br>
- * If the directory does not start with "/" then the
- * system property <tt>${org.cougaar.install.path}</tt>
- * is prepended to the path.
  * <p>
  * The directory must contain these files:
  * <ul>
@@ -55,7 +52,8 @@ import org.apache.tomcat.core.TomcatException;
  *   <li>work/  <i>(read/write temporary directory)</i></li>
  * </ul>
  * <p>
- * Example files are in "tomcat/data" and should not be modified.
+ * Example files are in "webtomcat/data" and should not be 
+ * modified.
  */
 public class TomcatServletEngine 
   implements ServletEngine 
@@ -83,12 +81,6 @@ public class TomcatServletEngine
           ((arg != null) ? arg.getClass().getName() : "null"));
     }
     String s = (String) arg;
-
-    // prefix with ${org.cougaar.install.path}
-    if (!(s.startsWith("/"))) {
-      String cip = System.getProperty("org.cougaar.install.path");
-      s = cip+"/"+s;
-    }
 
     this.installPath = s;
 
