@@ -297,7 +297,8 @@ public class TomcatServletEngine
       }
       String msg = te.getMessage();
       if ((msg != null) &&
-          (msg.indexOf("Address already in use") >= 0)) {
+          ((msg.indexOf("Address already in use") >= 0) ||
+           (msg.indexOf("Address in use") >= 0))) {
         // very likely a port-in-use exception
         //
         // let the user figure out which port it was...
