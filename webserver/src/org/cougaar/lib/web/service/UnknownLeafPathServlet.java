@@ -21,6 +21,7 @@
 package org.cougaar.lib.web.service;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.*;
 
 import javax.servlet.*;
@@ -29,12 +30,11 @@ import javax.servlet.http.*;
 import org.cougaar.lib.web.arch.ServletRegistry;
 
 /**
- * A servlet that displays an error message when an unknown
- * leaf path ("/$name/junk") is requested.
- * <p>
- * This can be used as a general "/help" page.  It simply
- * tells the client this agent's name and refers the client 
- * to the "/list" page.
+ * A "/$name[/.*]" level servlet that<ol>
+ *   <li>generates a help message for "/$name" and "/$name/" 
+ *       requests</li>
+ *   <li>generates an error message for all other paths</li>
+ * </ol>
  */
 public class UnknownLeafPathServlet 
 implements Servlet {
@@ -52,38 +52,70 @@ implements Servlet {
       throw new ServletException("non-HTTP request or response");
     }
 
-    displayErrorPage(httpReq, httpRes);
+    handle(httpReq, httpRes);
   }
 
-  /**
-   * Utility method.
-   */
-  public final void displayErrorPage(
+  private final void handle(
       HttpServletRequest req,
       HttpServletResponse res) throws ServletException, IOException {
 
     // get the "/$name[/.*]"
     String path = req.getRequestURI();
+    // assert ((path != null) && (path.startsWith("/$")))
     String name;
-    String trimPath;
-    if (path.startsWith("/$")) {
-      int sepIdx = path.indexOf('/', 2);
-      if (sepIdx < 0) {
-        name = path.substring(2);
-        trimPath = "/";
-      } else {
-        name = path.substring(2, sepIdx);
-        trimPath = path.substring(sepIdx);
-      }
+    int sepIdx = path.indexOf('/', 2);
+    if (sepIdx < 0) {
+      name = path.substring(2);
     } else {
-      // might want to reuse this servlet for missing-name reqs
-      name = "";
-      trimPath = path;
+      name = path.substring(2, sepIdx);
+      if (sepIdx < (path.length() - 1)) {
+        name = path.substring(2, sepIdx);
+        String trimPath = path.substring(sepIdx);
+        displayErrorPage(req, res, name, trimPath);
+        return;
+      }
     }
+    displayHelpPage(req, res, name);
+  }
+
+  private final void displayHelpPage(
+      HttpServletRequest req,
+      HttpServletResponse res,
+      String name) throws ServletException, IOException {
+    res.setContentType("text/html");
+    PrintWriter out = res.getWriter();
+    out.print(
+      "<html><head><title>"+
+      "Agent "+
+      name+
+      "</title></head><body>\n"+
+      "<h2>Agent "+
+      name+
+      "</h2>\n"+
+      "Options:<ul>\n"+
+      "<li><a href=\"/$"+
+      name+
+      "/list\">List paths in agent \""+
+      name+
+      "\"</a></li>\n"+
+      "<li><a href=\"/agents\">List agents co-located with agent \""+
+      name+
+      "\"</a></li>\n"+
+      "<li><a href=\"/agents?all\">List all agents</a></li>\n"+
+      "</ul>\n"+
+      "</body></html>");
+    out.close();
+  }
+
+  private final void displayErrorPage(
+      HttpServletRequest req,
+      HttpServletResponse res,
+      String name,
+      String path) throws ServletException, IOException {
 
     String title = 
       "Unknown Servlet Path \""+
-      trimPath+
+      path+
       "\" within Agent \""+
       name+
       "\"";
@@ -105,7 +137,10 @@ implements Servlet {
     buf.append(name);
     buf.append(
         "\"</a></li>\n"+
-        "<li><a href=\"/agents\">List local agents</a></li>\n"+
+        "<li><a href=\"/agents\">List agents co-located with agent \"");
+    buf.append(name);
+    buf.append(
+        "</a></li>\n"+
         "<li><a href=\"/agents?all\">List all agents</a></li>\n"+
         "</ul>\n"+
         "</body></html>");

@@ -35,14 +35,12 @@ import org.cougaar.lib.web.arch.ServletRegistry;
  * <p>
  * Specifically, this servlet handles:<ul>
  *   <li>"[/]"<br>
- *       Generates a help page.</li>
- *   <li>"/help"<br>
- *       Generates a help page.</li>
+ *       Generates a help page.</li><p>
  *   <li>"/$[/.*]"<br>
  *       Redirects the request to a <b>RANDOM</b> local 
  *       agent name.  This is userful when the client
  *       can assume that any locally-registered agent
- *       can handle the request.</li>
+ *       can handle the request.</li><p>
  *   <li>"/agents[?args]"<br>
  *       Lists agent names.  The supported URL-parameter 
  *       arguments are:<ul>
@@ -59,14 +57,20 @@ import org.cougaar.lib.web.arch.ServletRegistry;
  *       redirects and this "/agents" support, the client 
  *       can request "/$name/agents" to list all 
  *       co-located agents, regardless of where the named 
- *       agent happens to be located.</li>
+ *       agent happens to be located.</li><p>
+ *   <li>"/robots.txt"<br>
+ *       Generates this hard-coded response:<pre>
+ *           User-agent: *
+ *           Disallow: /
+ *       </pre>This keeps out web-crawlers, such as 
+ *       "google".</li><p>
  *   <li>"/<i>other</i>"<br>
  *       Same as "/$/<i>other</i>", assuming that 
- *       "<i>other</i>" != "agents" and 
- *       "<i>other</i>" != "/$<i>text</i>/.*"</li>.
+ *       "/<i>other</i>" doesn't match one of the
+ *       cases listed above.<br>
  *       I'd like to remove this case and force users to 
- *       <i>always</i> specify a name, but for now this is 
- *       necessary for backwards compatibility.  Consider 
+ *       <i>always</i> specify "/$/[.*]", but for now this 
+ *       is necessary for backwards compatibility.  Consider 
  *       it <i>deprecated</i>...
  * </ul>
  * <p>
@@ -122,9 +126,11 @@ implements Servlet {
     } else if (path.equals("/agents")) {
       listAgents(req, res);
       return;
-    } else if ((path.length() <= 2) ||
-               (path.equals("/help"))) {
+    } else if (path.length() <= 2) {
       displayHelp(req, res);
+      return;
+    } else if (path.equals("/robots.txt")) {
+      excludeRobots(req, res);
       return;
     } else {
       trimPath = path;
@@ -137,7 +143,8 @@ implements Servlet {
       HttpServletRequest req,
       HttpServletResponse res) throws ServletException, IOException {
     res.setContentType("text/html");
-    String msg =
+    PrintWriter out = res.getWriter();
+    out.print(
       "<html><head><title>"+
       "Welcome to Cougaar"+
       "</title></head><body>\n"+
@@ -147,10 +154,8 @@ implements Servlet {
       "<li><a href=\"/agents\">List local agents</a></li>\n"+
       "<li><a href=\"/agents?all\">List all agents</a></li>\n"+
       "</ul>\n"+
-      "</body></html>";
-    res.sendError(
-      HttpServletResponse.SC_NOT_FOUND, 
-      msg);
+      "</body></html>");
+    out.close();
   }
 
   private final void listAgents(
@@ -239,6 +244,15 @@ implements Servlet {
       out.print("</body></html>");
       out.close();
     }
+  }
+
+  private final void excludeRobots(
+      HttpServletRequest req,
+      HttpServletResponse res) throws ServletException, IOException {
+    // we don't want web-crawlers!
+    res.setContentType("text/plain");
+    PrintWriter out = res.getWriter();
+    out.print("User-agent: *\nDisallow: /\n");
   }
 
   private final void randomLocalRedirect(
