@@ -71,110 +71,64 @@ implements GlobalRegistry {
   }
 
   public void rebind(String encName) throws IOException {
-    // check the url-encoded name
+    update(true, encName, "http",  httpAddr,  httpPort);
+    update(true, encName, "https", httpsAddr, httpsPort);
+  }
+
+  public void unbind(String encName) throws IOException {
+    update(false, encName, "http",  httpAddr,  httpPort);
+    update(false, encName, "https", httpsAddr, httpsPort);
+  }
+
+  private void update(
+      boolean bind,
+      String encName,
+      String scheme,
+      InetAddress addr,
+      int port) {
+    if (port < 0) {
+      return;
+    }
+
     if (encName == null) {
       throw new NullPointerException();
     }
 
     // register in white pages
-    if (httpPort >= 0) {
-      URI httpURI = URI.create(
-          "http://"+
-          httpAddr.getHostName()+
-          ":"+
-          httpPort+
-          "/$"+
-          encName);
-      String rawName = decode(encName);
-      AddressEntry httpEntry =
-        AddressEntry.getAddressEntry(
-            rawName, "http", httpURI);
-      try {
-        Callback callback = new Callback() {
-            public void execute(Response res) {
-              if (res.isSuccess()) {
-                if (logger.isInfoEnabled()) {
-                  logger.info("WP Response: "+res);
-                }
-              } else {
-                logger.error("WP Error: "+res);
-              }
-            }
-          };
+    URI uri = URI.create(
+      scheme+
+      "://"+
+      addr.getHostName()+
+      ":"+
+      port+
+      "/$"+
+      encName);
+    String rawName = decode(encName);
+    AddressEntry entry =
+      AddressEntry.getAddressEntry(
+        rawName, scheme, uri);
 
-        wp.rebind(httpEntry, callback);
-      } catch (Exception e) {
-        throw new RuntimeException(
-            "Unable to bind("+httpEntry+")", e);
+    Callback callback = new Callback() {
+      public void execute(Response res) {
+        if (res.isSuccess()) {
+          if (logger.isInfoEnabled()) {
+            logger.info("WP Response: "+res);
+          }
+        } else {
+          logger.error("WP Error: "+res);
+        }
       }
-    }
-    if (httpsPort > 0) {
-      URI httpsURI = URI.create(
-        "https://"+
-        httpsAddr.getHostName()+
-        ":"+
-        httpsPort+
-        "/$"+
-        encName);
-      String rawName = decode(encName);
-      AddressEntry httpsEntry =
-        AddressEntry.getAddressEntry(
-            rawName, "https", httpsURI);
-      try {
-        Callback callback = new Callback() {
-            public void execute(Response res) {
-              if (res.isSuccess()) {
-                if (logger.isInfoEnabled()) {
-                  logger.info("WP Response: "+res);
-                }
-              } else {
-                logger.error("WP Error: "+res);
-              }
-            }
-          };
+    };
 
-        wp.rebind(httpsEntry, callback);
-      } catch (Exception e) {
-        throw new RuntimeException(
-            "Unable to rebind("+httpsEntry+")", e);
+    try {
+      if (bind) {
+        wp.rebind(entry, callback);
+      } else {
+        wp.unbind(entry, callback);
       }
-    }
-  }
-
-  public void unbind(String encName) throws IOException {
-    // check the url-encoded name
-    if (encName == null) {
-      throw new NullPointerException();
-    }
-
-    // verify that "encName" was registered by this instance?
-
-    // unregister from white pages
-    if (httpPort > 0) {
-      URI httpURI = URI.create("http://ignored");
-      String rawName = decode(encName);
-      AddressEntry httpEntry =
-        AddressEntry.getAddressEntry(
-            rawName, "http", httpURI);
-      try {
-        wp.unbind(httpEntry);
-      } catch (Exception e) {
-        throw new RuntimeException(
-            "Unable to unbind("+httpEntry+")", e);
-      }
-    }
-    if (httpsPort > 0) {
-      URI httpsURI = URI.create("https://ignored");
-      String rawName = decode(encName);
-      AddressEntry httpsEntry =
-        AddressEntry.getAddressEntry(
-            rawName, "https", httpsURI);
-      try {
-        wp.unbind(httpsEntry);
-      } catch (Exception e) {
-        throw new RuntimeException(
-            "Unable to unbind("+httpsEntry+")", e);
-      }
+    } catch (Exception e) {
+      throw new RuntimeException(
+        "Unable to "+(bind?"":"un")+"bind("+entry+")", e);
     }
   }
 
