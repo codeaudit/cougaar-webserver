@@ -52,6 +52,8 @@ import org.apache.catalina.LifecycleException;
  *   <li>webapps/ROOT/WEB-INF/web.xml</li>
  *   <li>work/  <i>(read/write temporary directory)</i></li>
  * </ul>
+ * Where the above "/" directory separator matches the OS-specific
+ * character defined in File.
  * <p>
  * Example files are in "webtomcat/data" and should not be 
  * modified.
@@ -59,12 +61,14 @@ import org.apache.catalina.LifecycleException;
 public class TomcatServletEngine
   implements ServletEngine 
 {
+  private static final String SEP = File.separator;
+
   private static final boolean DEBUG = false;
 
   private static final String[] CONFIG_FILES = {
-    "conf/server.xml",
-    "conf/modules.xml",
-    "webapps/ROOT/WEB-INF/web.xml",
+    "conf"+SEP+"server.xml",
+    "conf"+SEP+"modules.xml",
+    "webapps"+SEP+"ROOT"+SEP+"WEB-INF"+SEP+"web.xml",
   };
 
   private final String installPath;
@@ -102,7 +106,7 @@ public class TomcatServletEngine
   private void verifyConfigFiles() {
     // check the standard config files
     for (int i = 0; i < CONFIG_FILES.length; i++) {
-      String s = installPath+"/"+CONFIG_FILES[i];
+      String s = installPath+SEP+CONFIG_FILES[i];
       File f = new File(s);
       if (!(f.exists())) {
         throw new RuntimeException(
@@ -117,7 +121,7 @@ public class TomcatServletEngine
     //
     // better to force this directory to exist than to let
     //   Tomcat attempt to create it and quietly fail
-    String workS = installPath+"/work";
+    String workS = installPath+SEP+"work";
     File workDir = new File(workS);
     if (!(workDir.exists())) {
       throw new RuntimeException(
@@ -198,7 +202,7 @@ public class TomcatServletEngine
 
       et.setParentClassLoader(cl);
       try {
-        et.readConfigFile(installPath + "/conf/server.xml");
+        et.readConfigFile(installPath+SEP+"conf"+SEP+"server.xml");
       } catch (Exception e) {
         throw new RuntimeException(
           "Tomcat-internal exception: " + e.getMessage());
