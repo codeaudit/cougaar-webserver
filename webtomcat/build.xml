@@ -1,4 +1,9 @@
 <!-- Autobuild-generated ANT v1.5 script for building the Cougaar module "webtomcat". -->
+
+<!--                                                 -->
+<!-- THIS IS A MACHINE GENERATED FILE - DO NOT EDIT! -->
+<!--                                                 -->
+
 <!-- The source for this file is in build/data/moduleTemplate.xml -->
 
 <!-- autobuild might execute this with something like:
@@ -201,6 +206,26 @@
     </path>
     <property name="genpath" refid="codegen.path"/>
 
+    <!-- patterns -->
+    <patternset id="ps.jar.extras">
+      <include name="**/*.def"/>
+      <include name="**/*.gif"/>
+      <include name="**/*.html"/>
+      <include name="**/*.htm"/>
+      <include name="**/*.jpg"/>
+      <include name="**/*.bmp"/>
+      <include name="**/*.png"/>
+    </patternset>
+
+    <patternset id="ps.notsources">
+      <exclude name="**/CVS"/>
+      <exclude name="**/*#"/>
+      <exclude name="**/*~"/>
+      <exclude name="**/*.class"/>
+      <exclude name="**/*.flc"/>
+      <exclude name="**/.cvsignore"/>
+    </patternset>
+
     <!-- ================ Targets ================ -->
 
     <!-- ========================================================== -->
@@ -225,7 +250,7 @@
     <!-- Test for presence of JUnit. Skip JUnit targets if not found. -->
     <!-- Also skip if there is no regress directory -->	
     <!-- ========================================================== -->
-    <target name="junit" depends="prepare" if="has.Regress">
+    <target name="junit" depends="prepare" if="has.regress">
       <available property="junit.present" classname="junit.framework.TestCase" classpathref="junit.classpath"/>
     </target>
 
@@ -297,7 +322,7 @@
       <!-- Copy any gifs and HTML help files over as well -->
       <copy todir="${module.examples}" >
 	<fileset dir="${examples}">
-	  <patternset id="images.and.html.and.def"/>
+	  <patternset refid="ps.jar.extras"/>
 	</fileset>
       </copy>
     </target>
@@ -322,7 +347,7 @@
       <available property="has.configs" file="${configs}"/>
       <available property="has.dev" file="${dev}"/>
       <available property="has.doc" file="${doc}"/>
-      <available property="has.Regress" file="${regress}"/>
+      <available property="has.regress" file="${regress}"/>
       <available property="has.lib" file="${local.lib}"/>
       
       <!-- Create the timestamp -->
@@ -394,15 +419,7 @@
       <!-- Copy any gifs and HTML help files over as well -->
       <copy todir="${module.classes}" >
 	<fileset dir="${src}">
-	  <patternset id="images.and.html.and.def">
-	    <include name="**/*.def"/>
-	    <include name="**/*.gif"/>
-	    <include name="**/*.html"/>
-	    <include name="**/*.htm"/>
-	    <include name="**/*.jpg"/>
-	    <include name="**/*.bmp"/>
-	    <include name="**/*.png"/>
-	  </patternset>
+	  <patternset refid="ps.jar.extras"/>
 	</fileset>
       </copy>
     </target>
@@ -590,14 +607,7 @@
       <copy todir="${zipdir.src}">
 	<!-- skip CVS, #, ~, .class -->
 	<fileset dir="${src}">
-	  <patternset id="real.sources">
-	    <exclude name="**/CVS"/>
-	    <exclude name="**/*#"/>
-	    <exclude name="**/*~"/>
-	    <exclude name="**/*.class"/>
-	    <exclude name="**/*.flc"/>
-	    <exclude name="**/.cvsignore"/>
-	  </patternset>
+	  <patternset refid="ps.notsources"/>
 	</fileset>
       </copy>
     </target>
@@ -606,15 +616,15 @@
       <mkdir dir="${zipdir.examples}"/>
       <copy todir="${zipdir.examples}">
 	<fileset dir="${examples}">
-	  <patternset id="real.sources"/>
+	  <patternset refid="ps.notsources"/>
 	</fileset>
       </copy>
     </target>
-    <target name="zip-copy-test" depends="set-zip-dirs, junit" if="has.Regress">
+    <target name="zip-copy-test" depends="set-zip-dirs, junit" if="has.regress">
       <mkdir dir="${zipdir.regress}"/>
       <copy todir="${zipdir.regress}">
 	<fileset dir="${regress}">
-	  <patternset id="real.sources"/>
+	  <patternset refid="ps.notsources"/>
 	</fileset>
       </copy>
     </target>
@@ -622,7 +632,7 @@
       <mkdir dir="${zipdir.dev}"/>
       <copy todir="${zipdir.dev}">
 	<fileset dir="${dev}">
-	  <patternset id="real.sources"/>
+	  <patternset refid="ps.notsources"/>
 	</fileset>
       </copy>
     </target>
