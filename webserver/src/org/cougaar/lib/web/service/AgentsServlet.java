@@ -611,26 +611,17 @@ public class AgentsServlet implements Servlet {
         List names,
         Limit lim) {
       // pretty HTML
-      String title;
-      String suffixLinks = null;
-      if (isLocal) {
-        title =
-          "Agent on Host ("+
-          serverName+":"+serverPort+
-          ")";
-      } else {
-        if (".".equals(encSuffix)) {
-          title = "Agents at the Root (\"";
-        } else {
-          suffixLinks = createSuffixLinks(encSuffix);
-          title = "Agents with Suffix (\""+suffixLinks;
-        }
-        title +=
-            "<a href="+
-            getLink(".", "html")+
-            ">.</a>"+
-            "\")";
-      }
+      String title =
+        "Agents "+
+        (isLocal ?
+         ("on Host ("+serverName+":"+serverPort+")") :
+         (((".".equals(encSuffix)) ?
+           "at the Root (\"" :
+           "with Suffix (\""+createSuffixLinks(encSuffix))+
+          "<a href="+
+          getLink(".", "html")+
+          ">.</a>"+
+          "\")"));
       out.print("<html><head><title>");
       out.print(title);
       out.print(
@@ -648,46 +639,26 @@ public class AgentsServlet implements Servlet {
               "<tr><td align=\"right\">&nbsp;"+
               (i + 1)+".&nbsp;</td><td align=\"right\">");
           int j = ni.indexOf('.');
-          if (!split) {
-            // use simple links to the complete names
+          if (split) {
+            if (j != 0) {
+              // print head(\.tail)?
+              out.print(
+                  "<a href=\"/$"+ni+"/list\">"+
+                  (j < 0 ? ni : ni.substring(0, j))+
+                  "</a>");
+            } 
+            if (j >= 0) {
+              // print \.tail
+              out.print(createSuffixLinks(ni.substring(j)));
+            }
+          } else {
+            // print complete head(\.tail)?
             out.print(
                 "<a href="+
                 ((j == 0) ?
                  (getLink(ni, "html")) :
                  ("\"/$"+ni+"/list\""))+
                 ">"+ni+"</a>");
-            continue;
-          }
-          // split names into directory links
-          String head = 
-            (j > 0 ? ni.substring(0, j) : j < 0 ? ni : null);
-          if (head != null) {
-            // looks like:  head(\.tail)?
-            out.print("<a href=\"/$"+ni+"/list\">"+head+"</a>");
-          }
-          if (isLocal || depthLimit > 1) {
-            // possible different suffix per entry
-            if (j >= 0) {
-              String tail = ni.substring(j);
-              String links = createSuffixLinks(tail);
-              out.print(links);
-            }
-            continue;
-          }
-          if (j == 0) {
-            // all have the same suffix: \.?mid(\.suffix)
-            int k = ni.indexOf('.', 1);
-            String mid = 
-              (k > 0 ? ni.substring(0, k) : k < 0 ? ni : null);
-            if (mid != null) {
-              out.print(
-                  "<a href="+
-                  getLink(ni, "html")+
-                  ">"+mid+"</a>");
-            }
-          }
-          if (suffixLinks != null) {
-            out.print(suffixLinks);
           }
         }
         if (lim != null) {
