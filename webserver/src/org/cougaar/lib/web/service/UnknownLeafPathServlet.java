@@ -119,6 +119,7 @@ implements Servlet {
 
     res.setContentType("text/html");
     res.setStatus(HttpServletResponse.SC_NOT_FOUND);
+    res.addHeader("Cougaar-error", "path");
     PrintWriter out = res.getWriter();
 
     String title = 

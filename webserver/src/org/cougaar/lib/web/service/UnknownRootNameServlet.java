@@ -75,6 +75,7 @@ implements Servlet {
 
     res.setContentType("text/html");
     res.setStatus(HttpServletResponse.SC_NOT_FOUND);
+    res.addHeader("Cougaar-error", "agent");
     PrintWriter out = res.getWriter();
 
     // get the "/$name[/.*]"
