@@ -76,7 +76,7 @@ implements GlobalRegistry {
           httpPort+
           "/$"+
           encName);
-      String rawName = URLDecoder.decode(encName);
+      String rawName = decode(encName);
       AddressEntry httpEntry =
         new AddressEntry(
             rawName,
@@ -99,7 +99,7 @@ implements GlobalRegistry {
         httpsPort+
         "/$"+
         encName);
-      String rawName = URLDecoder.decode(encName);
+      String rawName = decode(encName);
       AddressEntry httpsEntry =
         new AddressEntry(
             rawName,
@@ -127,7 +127,7 @@ implements GlobalRegistry {
     // unregister from white pages
     if (httpPort > 0) {
       URI httpURI = URI.create("http://ignored");
-      String rawName = URLDecoder.decode(encName);
+      String rawName = decode(encName);
       AddressEntry httpEntry =
         new AddressEntry(
             rawName,
@@ -144,7 +144,7 @@ implements GlobalRegistry {
     }
     if (httpsPort > 0) {
       URI httpsURI = URI.create("https://ignored");
-      String rawName = URLDecoder.decode(encName);
+      String rawName = decode(encName);
       AddressEntry httpsEntry =
         new AddressEntry(
             rawName,
@@ -171,7 +171,7 @@ implements GlobalRegistry {
       return null;
     }
 
-    String rawName = URLDecoder.decode(encName);
+    String rawName = decode(encName);
     AddressEntry[] a;
     try {
       a = wp.get(rawName);
@@ -198,7 +198,7 @@ implements GlobalRegistry {
   }
 
   public Set list(String encSuffix) throws IOException {
-    String rawSuffix = URLDecoder.decode(encSuffix);
+    String rawSuffix = decode(encSuffix);
     Set s;
     try {
       s = wp.list(rawSuffix);
@@ -215,10 +215,26 @@ implements GlobalRegistry {
       Iterator iter = s.iterator();
       for (int i = 0; i < n; i++) {
         String rawName = (String) iter.next();
-        String encName = URLEncoder.encode(rawName);
+        String encName = encode(rawName);
         ret.add(encName);
       }
     }
     return ret;
+  }
+
+  private static final String encode(String raw) {
+    try {
+      return URLEncoder.encode(raw, "UTF-8");
+    } catch (UnsupportedEncodingException uee) {
+      throw new RuntimeException("Invalid name: "+raw, uee);
+    }
+  }
+
+  private static final String decode(String enc) {
+    try {
+      return URLDecoder.decode(enc, "UTF-8");
+    } catch (UnsupportedEncodingException uee) {
+      throw new RuntimeException("Invalid name: "+enc, uee);
+    }
   }
 }
