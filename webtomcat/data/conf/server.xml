@@ -10,87 +10,55 @@
   -->
 
 <Server>
+  <!-- There must be one and only one Service for cougaar -->
+  <Service name="CougaarWebService">
 
-    <!-- 
-        Modify "showDebugInfo" to "false" to hide server 
-        printing of stack-traces from remote clients 
-        (e.g. if a servlet throws an Exception)
-      -->
-    <ContextManager workDir="work" showDebugInfo="true">
+    <!-- There must be one and only one Engine tag representing the engine
+         that is used for all web applications -->
+    <Engine name="CougaarWebEngine" defaultHost="DEFAULT">
 
-        <!-- 
-            Do NOT alter this ordering! 
-            I'm not sure if this is a minimal set...
-          -->
+      <!-- turn on fatal error logging to webtomcat-*.log -->
+      <Logger className="org.apache.catalina.logger.FileLogger"
+       verbosity="0" timestamp="true" prefix="webtomcat" directory="logs"/>
 
-        <LoaderInterceptor11  useApplicationLoader="true" />
+      <!-- Turn on memory realm. We will later be moving to the JNDIRealm -->
+      <Realm className="org.apache.catalina.realm.MemoryRealm" 
+       debug="-1" pathname="conf/tomcat-users.xml" />
 
-        <TrustedLoader />
+      <!-- set up the host. For cougaar there is only a single host.
+           Unpack-wars is false; we should only have the ROOT. -->
+      <Host name="DEFAULT" appBase="webapps" unpackWARs="false">
 
-        <!-- 
-            Tomcat logging MUST be disabled!
+        <!-- Set the default context configuration for the automatically
+             added webapps.
+             Reloadable is false; we should only have the ROOT. -->
+        <DefaultContext cookies="true" crossContext="false" reloadable="false"/>
 
-            LogSetter calls "org.apache.tomcat.util.log.Log"'s
-            "public static void setLogManager(..)" method, which
-            insists that the LogManager can only be set once.
-            This breaks if Cougaar attempts to start Tomcat more
-            than once (e.g. due to port scan to find a free port).
+        <!-- set up the default Context -->
+        <Context path="" docBase="ROOT" workDir="work">
 
-            I'll submit a bug report to the Tomcat team...
-          -->
-         <!--        
-         <LogSetter name="tc_log" timestamps="true" verbosityLevel="FATAL"/> 
-         -->
+          <!-- Create a session manager. I don't like the seeding mechanism
+               which seems to rely on a seed within the server.xml file as
+               opposed to using the /dev/urandom in Tomcat 3.3. It might
+               be a good idea to write our own session manager class. This
+               class also can persist the data across startups if the correct
+               shutdown command is given (which won't happen since it isn't
+               implemented in org.cougaar.lib.web.tomcat.EmbeddedTomcat) -->
+          <Manager className="org.apache.catalina.session.StandardManager"
+           entropy="ND(L{=$#fas993Fa-d91Fsf0aA512ofka9emASg9_^elfkjf02ldmxc23DFjf9mI)mfls9wh4mrpfd0eWsklf9a(^fk2vcxzz03/f0wk.,r-xc93j36390-7luydSJUT87ejgmRy9shwf"
+           checkInterval="83" randomClass="java.security.SecureRandom"
+           maxActiveSession="-1" pathname="UserSessions.dat"/>
+        </Context>
 
-        <LogEvents enabled="false" />
-        
-        <ContextXmlReader config="conf/server.xml" />
-
-        <AutoWebApp dir="webapps" host="DEFAULT" />
-
-        <SimpleMapper1 />
-
-        <SessionExpirer checkInterval="60" />
-        
-        <!-- this "/dev/urandom" is okay even on non-Linux machines -->
-        <SessionIdGenerator 
-            randomClass="java.security.SecureRandom" 
-            randomFile="/dev/urandom" />
-
-        <WebXmlReader validate="true" />
-
-        <ErrorHandler showDebugInfo="true" />
-
-        <WorkDirSetup cleanWorkDir="true" />
-
-        <Jdk12Interceptor /> 
-
-        <InvokerInterceptor /> 
-
-        <SimpleSessionStore maxActiveSessions="-1" />
-
-        <AccessInterceptor />
-        <CredentialsInterceptor />
-
-        <!-- 
-          Form-based username/password support.
-
-          The "web.xml" will force all "*.secure" requests
-          to undergo username/password authentication.
-          See "tomcat-users.xml" for the passwords list.
-
-          Under Tomcat 4 we could plugin a custom Realm, which
-          could read the username/passwords from "cougaar.rc".
-          -->
-        <SimpleRealm filename="conf/tomcat-users.xml"/>
-
-        <LoadOnStartupInterceptor />
-
-        <Servlet22Interceptor />
-
-        <DecodeInterceptor /> 
-
-        <SessionId cookiesFirst="true" noCookies="false" /> 
-
-    </ContextManager>
+        <!-- Normally, users must authenticate themselves to each web app
+             individually.  Uncomment the following entry if you would like
+             a user to be authenticated the first time they encounter a
+             resource protected by a security constraint, and then have that
+             user identity maintained across *all* web applications contained
+             in this virtual host. -->
+        <Valve className="org.apache.catalina.authenticator.SingleSignOn"
+                   debug="0"/>
+      </Host>
+    </Engine>
+  </Service>
 </Server>

@@ -22,17 +22,17 @@ package org.cougaar.lib.web.tomcat;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.BindException;
 import java.net.URL;
 import javax.servlet.*;
 import javax.servlet.http.*;
-
+ 
 // will implement "ServletEngine":
 import org.cougaar.lib.web.arch.server.*;
 
-// using Tomcat 3.3:
-import org.apache.tomcat.startup.EmbededTomcat;
-import org.apache.tomcat.core.TomcatException;
+// using Tomcat 4.0
+import org.apache.catalina.LifecycleException;
 
 /**
  * Implementation of <code>ServletEngine</code> for Tomcat 3.3.
@@ -54,7 +54,7 @@ import org.apache.tomcat.core.TomcatException;
  * Example files are in "webtomcat/data" and should not be 
  * modified.
  */
-public class TomcatServletEngine 
+public class TomcatServletEngine
   implements ServletEngine 
 {
 
@@ -181,6 +181,8 @@ public class TomcatServletEngine
     return isRunning;
   }
 
+
+
   public void start() throws IOException {
 
     if (debug) {
@@ -203,18 +205,20 @@ public class TomcatServletEngine
     // tomcat automatically loads the HookServlet due to XML scripts
     try { 
       if (debug) {
-        System.out.println("create embeded-tomcat");
+        System.out.println("create embedded-tomcat");
       }
-      EmbededTomcat et = new EmbededTomcat();
+      EmbeddedTomcat et = new EmbeddedTomcat();
+      
 
       if (debug) {
         System.out.println("turning up embeded-tomcat debug level");
-        et.setDebug(30);
+        et.setDebug(true);
       }
 
       if (debug) {
         System.out.println("setting installPath: \""+installPath+"\"");
       }
+
       et.setInstall(installPath);
 
       if (debug) {
@@ -224,21 +228,23 @@ public class TomcatServletEngine
       if (cl == null) {
         cl = ClassLoader.getSystemClassLoader();
       }
-      et.setParentClassLoader(cl);
-      et.setCommonClassLoader(cl);
-      et.setAppsClassLoader(cl);
-      et.setContainerClassLoader(cl);
 
+      et.setParentClassLoader(cl);
+      try {
+        et.readConfigFile(installPath + "/conf/server.xml");
+      } catch (Exception e) {
+        throw new RuntimeException(
+          "Tomcat-internal exception: " + e.getMessage());
+      }
+      
       if (httpC != null) {
         if (debug) {
           System.out.println("setting https endpoint: "+httpsC);
         }
         System.out.println(
             "Starting HTTP  server on port: "+httpC.getPort());
-        et.addEndpoint(
-            httpC.getPort(),
-            null,
-            null);
+
+        et.addEndpoint(httpC.getPort(), null);
       }
 
       if (httpsC != null) {
@@ -251,51 +257,36 @@ public class TomcatServletEngine
         HttpConfig shc = httpsC.getHttpConfig();
         System.out.println(
             "Starting HTTPS server on port: "+shc.getPort());
-        int idx = 
-          et.addSecureEndpoint( 
-              shc.getPort(), 
-              null,
-              null,
-              null,
-              null);
-        et.setModuleProperty(
-            idx, 
-            "keystore", 
-            httpsC.getServerKeystore());
-	et.setModuleProperty(
-            idx, 
-            "keypass", 
-            httpsC.getServerKeypass());
-        if (httpsC.getClientAuth()) {
-          et.setModuleProperty(
-              idx, 
-              "clientauth", 
-              "true");
-        }
+        et.addSecureEndpoint( shc.getPort(), null,
+                              httpsC.getServerKeystore(),
+                              httpsC.getServerKeypass(),
+                              httpsC.getClientAuth() );
       }
 
       if (debug) {
-        System.out.println("setting args to {\"start\"}");
+        System.out.println("calling embeddedStart()");
       }
-      et.setArgs(new String[] {"start"});
-
-      if (debug) {
-        System.out.println("calling execute()");
-      }
-      et.execute();
+      et.embeddedStart();
 
       if (debug) {
         System.out.println("server is running");
       }
 
       this.isRunning = true;
-    } catch (TomcatException te) {
+    } catch (LifecycleException te) {
       if (debug) {
         System.err.println(
             "Unable to start Tomcat: "+te.getMessage());
         te.printStackTrace();
       }
+      Throwable tet = te.getThrowable();
+      if (tet instanceof BindException) {
+        // port is already in use
+        throw (BindException) tet;
+      } 
       String msg = te.getMessage();
+System.out.println("\n\n TWRIGHT msg("+msg+")");
+System.out.println("\n\n TWRIGHT throwable("+te.getThrowable()+")");
       if ((msg != null) &&
           ((msg.indexOf("Address already in use") >= 0) ||
            (msg.indexOf("Address in use") >= 0))) {
@@ -306,7 +297,7 @@ public class TomcatServletEngine
             "Port already in use");
       }
       throw new RuntimeException(
-          "Tomcat-internal exception: "+te.getMessage());
+          "Tomcat-internal exception: ", te);
     } catch (Exception e) {
       if (debug) {
         System.err.println(
@@ -314,7 +305,7 @@ public class TomcatServletEngine
         e.printStackTrace();
       }
       throw new RuntimeException(
-          "Unknown Tomcat exception: "+e.getMessage());
+          "Unknown Tomcat exception: ", e);
     }
   }
 
