@@ -51,7 +51,8 @@ implements Component
   private ServiceBroker sb;
 
   // from parameter:
-  private String name;
+  private String rawName;
+  private String encName;
 
   private ServletService rootServletService;
   private LeafServletServiceProviderImpl leafSP;
@@ -62,7 +63,7 @@ implements Component
   }
 
   /**
-   * Expecting a single String for the leaf's name.
+   * Expecting a single String for the leaf's raw name.
    */
   public void setParameter(Object o) {
     if (!(o instanceof String)) {
@@ -71,21 +72,18 @@ implements Component
           ((o != null) ? o.getClass().getName() : "null")+
           "\"");
     }
-    String rawName = (String) o;
+    this.rawName = (String) o;
 
-    // The name is encoded for HTTP safety.
+    // The raw name is encoded for HTTP safety.
     //
     // This is done to protect raw-names such as "x y",
     // which would produce invalid "../$x y/.." URLs.
-    String encName;
     try {
-      encName = java.net.URLEncoder.encode(rawName, "UTF-8");
+      this.encName = java.net.URLEncoder.encode(rawName, "UTF-8");
     } catch (Exception e) {
       throw new IllegalArgumentException(
           "Illegal name \""+rawName+"\": "+e.getMessage());
     }
-
-    this.name = encName;
   }
 
   public void load() {
@@ -203,11 +201,11 @@ implements Component
     public void start() {
       if (!(isRegistered)) {
         try {
-          // register name
-          rootServletService.register(name, leafServlet);
+          // register encoded name
+          rootServletService.register(encName, leafServlet);
         } catch (Exception e) {
           throw new RuntimeException(
-              "Unable to register \""+name+"\" for Servlet service",
+              "Unable to register \""+encName+"\" for Servlet service",
               e);
         }
         isRegistered = true;
@@ -217,8 +215,8 @@ implements Component
     public void stop() {
       if (isRegistered) {
         try {
-          // unregister name
-          rootServletService.unregister(name);
+          // unregister encoded name
+          rootServletService.unregister(encName);
 
           // FIXME wait until all child servlets have halted
         } finally {
@@ -276,7 +274,7 @@ implements Component
         // simultaneously register and unregister a Servlet...
         private final List l = new ArrayList(3);
 
-        /** prefix the path with the "/$name". */
+        /** prefix the path with the "/$encName". */
         private String prefixPath(String path) {
           path = path.trim();
           if (path.length() <= 1) {
@@ -287,7 +285,7 @@ implements Component
             throw new IllegalArgumentException(
                 "Path \""+path+"\" must start with \"/\"");
           }
-          return "/$"+name+path;
+          return "/$"+encName+path;
         }
 
         public void register(

@@ -22,6 +22,7 @@ package org.cougaar.lib.web.arch.root;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.URI;
 
 import javax.servlet.*;
 import javax.servlet.http.*;
@@ -81,67 +82,44 @@ implements Servlet {
       HttpServletRequest req,
       HttpServletResponse res) throws ServletException, IOException {
 
-    // get the "/$name[/.*]"
+    // get the "/$encName[/.*]"
     String path = req.getRequestURI();
     // assert ((path != null) && (path.startsWith("/$")))
     int sepIdx = path.indexOf('/', 2);
     if (sepIdx < 0) {
       sepIdx = path.length();
     }
-    String name = path.substring(2, sepIdx);
+    String encName = path.substring(2, sepIdx);
 
-    // find the global entry for this name
-    GlobalEntry ge;
+    String scheme = req.getScheme();
+
+    // find the URI for this url-encoded name
+    URI uri;
     try {
-      ge = globReg.find(name);
+      uri = globReg.get(encName, scheme);
     } catch (Exception e) {
       // generate error response
       res.sendError(
           HttpServletResponse.SC_NOT_FOUND, 
-          "Unable to lookup Agent name: \""+name+"\": "+
+          "Unable to lookup Agent name: \""+encName+"\": "+
           e.getMessage());
       return;
     }
 
-    if (ge == null) {
+    if (uri == null) {
+      // possible protocol switch (e.g. https to http)
+      //
       // delegate to the unknown-name servlet
       unknownNameServlet.service(req, res);
       return;
     }
-
-
-    String scheme = req.getScheme();
-
-    InetAddress addr;
-    int port;
-    if ("https".equalsIgnoreCase(scheme)) {
-      addr = ge.getHttpsAddress();
-      port = ge.getHttpsPort();
-    } else {
-      // assert ("http".equalsIgnoreCase(scheme))
-      addr = ge.getHttpAddress();
-      port = ge.getHttpPort();
-    }
-
-    if ((addr == null) ||
-        (port <= 0)) {
-      // generate error response
-      res.sendError(
-          HttpServletResponse.SC_NOT_FOUND, 
-          "Protocol \""+scheme+
-          "\" not supported at remote Agent \""+
-          name+"\"'s address");
-      return;
-    }
-
-    String host = addr.getHostName();
 
     String queryString = req.getQueryString();
 
     // create the new location string
     String location = 
       scheme+"://"+
-      host+":"+port+
+      uri.getHost()+":"+uri.getPort()+
       path+
       ((queryString != null) ?
        ("?"+queryString) :

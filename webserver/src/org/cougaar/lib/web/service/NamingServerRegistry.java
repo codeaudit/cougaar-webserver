@@ -23,10 +23,9 @@ package org.cougaar.lib.web.service;
 import java.io.*;
 import java.net.*;
 import java.util.*;
-import javax.naming.*;
-import javax.naming.directory.*;
 
-import org.cougaar.lib.web.arch.root.GlobalEntry;
+import org.cougaar.core.service.wp.*;
+
 import org.cougaar.lib.web.arch.root.GlobalRegistry;
 
 /**
@@ -38,173 +37,188 @@ import org.cougaar.lib.web.arch.root.GlobalRegistry;
 public class NamingServerRegistry 
 implements GlobalRegistry {
 
-  /**
-   * Directory in the naming service.
-   */
-  private static final String DIRNAME = "WEBSERVERS";
+  private static final Application APP = 
+    Application.getApplication("servlet");
 
-  private static final String GLOBAL_ENTRY_CLASSNAME =
-        GlobalEntry.class.getName();
+  private final WhitePagesService wp;
 
-  /**
-   * The provided directory context for access to the
-   * naming service.
-   */
-  private final DirContext ctx;
+  private InetAddress httpAddr;
+  private InetAddress httpsAddr;
+  private int httpPort = -1;
+  private int httpsPort = -1;
 
-  /**
-   * A template <code>GlobalEntry</code> that represents
-   * this registry instance's configured HTTP/HTTPS
-   * location.
-   */
-  private GlobalEntry localTemplate;
-
-  public NamingServerRegistry(DirContext root) throws NamingException {
-    // create an entry
-    DirContext d;
-    try {
-      d = root.createSubcontext(DIRNAME, new BasicAttributes());
-    } catch (NamingException ne) {
-      d = (DirContext) root.lookup(DIRNAME);
-    }
-    this.ctx = d;
-    if (ctx == null) {
-      throw new NullPointerException();
-    }
+  public NamingServerRegistry(WhitePagesService wp) {
+    this.wp = wp;
   }
 
   public void configure(
       int httpPort,
       int httpsPort) throws IOException {
-
-    InetAddress addr = InetAddress.getLocalHost();
-
-    this.localTemplate = 
-      new GlobalEntry(
-          null,
-          addr, httpPort,
-          addr, httpsPort);
-
-    // for now don't advertise the empty "host:port"
+    InetAddress localAddr = InetAddress.getLocalHost();
+    this.httpAddr = localAddr;
+    this.httpPort = httpPort;
+    this.httpsAddr = localAddr;
+    this.httpsPort = httpsPort;
   }
 
-  public void register(String name) throws IOException {
-    // check the name
-    if (name == null) {
+  public void rebind(String encName) throws IOException {
+    // check the url-encoded name
+    if (encName == null) {
       throw new NullPointerException();
     }
 
-    // create a fully-specified entry
-    GlobalEntry addE = 
-      new GlobalEntry(
-          name, 
-          localTemplate.getHttpAddress(),
-          localTemplate.getHttpPort(),
-          localTemplate.getHttpsAddress(),
-          localTemplate.getHttpsPort());
-
-    try {
-      ctx.rebind(name, addE, new BasicAttributes());
-    } catch (NamingException ne) {
-      throw new IOException(ne.getMessage());
+    // register in white pages
+    if (httpPort >= 0) {
+      URI httpURI = URI.create(
+          "http://"+
+          httpAddr.getHostName()+
+          ":"+
+          httpPort+
+          "/$"+
+          encName);
+      String rawName = URLDecoder.decode(encName);
+      AddressEntry httpEntry =
+        new AddressEntry(
+            rawName,
+            APP,
+            httpURI,
+            Cert.NULL,
+            Long.MAX_VALUE);
+      try {
+        wp.rebind(httpEntry);
+      } catch (Exception e) {
+        throw new RuntimeException(
+            "Unable to bind("+httpEntry+")", e);
+      }
+    }
+    if (httpsPort > 0) {
+      URI httpsURI = URI.create(
+        "https://"+
+        httpsAddr.getHostName()+
+        ":"+
+        httpsPort+
+        "/$"+
+        encName);
+      String rawName = URLDecoder.decode(encName);
+      AddressEntry httpsEntry =
+        new AddressEntry(
+            rawName,
+            APP,
+            httpsURI,
+            Cert.NULL,
+            Long.MAX_VALUE);
+      try {
+        wp.rebind(httpsEntry);
+      } catch (Exception e) {
+        throw new RuntimeException(
+            "Unable to rebind("+httpsEntry+")", e);
+      }
     }
   }
 
-  public void unregister(String name) throws IOException {
-    // check the name
-    if (name == null) {
+  public void unbind(String encName) throws IOException {
+    // check the url-encoded name
+    if (encName == null) {
       throw new NullPointerException();
     }
 
-    // FIXME verify that "name" was registered by this instance
+    // verify that "encName" was registered by this instance?
 
-    try {
-      ctx.unbind(name);
-    } catch (NamingException ne) {
-      throw new IOException(ne.getMessage());
+    // unregister from white pages
+    if (httpPort > 0) {
+      URI httpURI = URI.create("http://ignored");
+      String rawName = URLDecoder.decode(encName);
+      AddressEntry httpEntry =
+        new AddressEntry(
+            rawName,
+            APP,
+            httpURI,
+            Cert.NULL,
+            Long.MAX_VALUE);
+      try {
+        wp.unbind(httpEntry);
+      } catch (Exception e) {
+        throw new RuntimeException(
+            "Unable to unbind("+httpEntry+")", e);
+      }
+    }
+    if (httpsPort > 0) {
+      URI httpsURI = URI.create("https://ignored");
+      String rawName = URLDecoder.decode(encName);
+      AddressEntry httpsEntry =
+        new AddressEntry(
+            rawName,
+            APP,
+            httpsURI,
+            Cert.NULL,
+            Long.MAX_VALUE);
+      try {
+        wp.unbind(httpsEntry);
+      } catch (Exception e) {
+        throw new RuntimeException(
+            "Unable to unbind("+httpsEntry+")", e);
+      }
     }
   }
 
-  public GlobalEntry find(final String name) throws IOException {
-    // check name
-    if ((name == null) ||
-        (name.length() == 0)) {
+  public URI get(final String encName, final String scheme) throws IOException {
+    // check the url-encoded name
+    if (encName == null || encName.length() == 0) {
+      return null;
+    }
+    // check the scheme
+    if (scheme == null || scheme.length() == 0) {
       return null;
     }
 
-    // FIXME cache?  timer thread to update the cache?
-
-    GlobalEntry ret;
+    String rawName = URLDecoder.decode(encName);
+    AddressEntry[] a;
     try {
-      ret = (GlobalEntry) ctx.lookup(name);
-    } catch (NameNotFoundException nnfe) {
-      return null;
-    } catch (NamingException ne) {
-      throw new IOException(ne.getMessage());
+      a = wp.get(rawName);
+    } catch (Exception e) {
+      throw new RuntimeException(
+          "Unable to get("+rawName+")", e);
     }
 
+    // extract matching app/scheme
+    URI uri = null;
+    for (int i = 0; i < a.length; i++) {
+      AddressEntry ai = a[i];
+      if (APP.equals(ai.getApplication())) {
+        URI ui = ai.getAddress();
+        String si = ui.getScheme();
+        if (scheme.equals(si)) {
+          uri = ui;
+          break;
+        }
+      }
+    }
+
+    return uri;
+  }
+
+  public Set list(String encSuffix) throws IOException {
+    String rawSuffix = URLDecoder.decode(encSuffix);
+    Set s;
+    try {
+      s = wp.list(rawSuffix);
+    } catch (Exception e) {
+      throw new RuntimeException(
+          "Unable to list("+rawSuffix+")", e);
+    }
+    int n = s.size();
+    Set ret;
+    if (n <= 0) {
+      ret = Collections.EMPTY_SET;
+    } else {
+      ret = new HashSet(n);
+      Iterator iter = s.iterator();
+      for (int i = 0; i < n; i++) {
+        String rawName = (String) iter.next();
+        String encName = URLEncoder.encode(rawName);
+        ret.add(encName);
+      }
+    }
     return ret;
-  }
- 
-  public List listNames() throws IOException {
-    return listNames(new ArrayList());
-  }
-
-  public List listNames(
-      List toList) throws IOException {
-    // check destination list
-    if (toList == null) {
-      throw new NullPointerException();
-    }
-
-    try {
-      NamingEnumeration en = ctx.listBindings("");
-      while (en.hasMoreElements()) {
-        Binding binding = (Binding) en.nextElement();
-        if (!(binding.getClassName().equals(GLOBAL_ENTRY_CLASSNAME))) {
-          continue;
-        }
-        GlobalEntry ge = (GlobalEntry) binding.getObject();
-        toList.add(ge.getName());
-      }
-    
-    } catch (NamingException ne) {
-      throw new IOException(ne.getMessage());
-    }
-
-    return toList;
-  }
- 
-  public List findAll(GlobalEntry query) throws IOException {
-    return findAll(new ArrayList(), query);
-  }
-
-  public List findAll(
-      List toList,
-      GlobalEntry query) throws IOException {
-    // check destination list
-    if (toList == null) {
-      throw new NullPointerException();
-    }
-
-    // FIXME cache?  timer thread to update the cache?
-
-    try {
-      NamingEnumeration en = ctx.listBindings("");
-      while (en.hasMoreElements()) {
-        Binding binding = (Binding) en.nextElement();
-        if (!(binding.getClassName().equals(GLOBAL_ENTRY_CLASSNAME))) {
-          continue;
-        }
-        GlobalEntry ge = (GlobalEntry) binding.getObject();
-        if (ge.matches(query)) {
-          toList.add(ge);
-        }
-      }
-    } catch (NamingException ne) {
-      throw new IOException(ne.getMessage());
-    }
-
-    return toList;
   }
 }

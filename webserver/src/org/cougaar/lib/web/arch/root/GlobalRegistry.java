@@ -21,7 +21,9 @@
 package org.cougaar.lib.web.arch.root;
 
 import java.io.IOException;
+import java.net.URI;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Interface to a global registry of servers and their
@@ -63,14 +65,14 @@ public interface GlobalRegistry {
    *
    * @throws Exception if name is already in use, or other error
    */
-  void register(String name) throws IOException;
+  void rebind(String encName) throws IOException;
 
   /**
    * Remove the given name from the global registry.
    *
    * @throws Exception if name not locally registered, or other error
    */
-  void unregister(String name) throws IOException;
+  void unbind(String encName) throws IOException;
 
   /**
    * Find the entry that matches the globally-unique name.
@@ -78,53 +80,12 @@ public interface GlobalRegistry {
    * @return the matching GlobalEntry, or null if none matches
    *
    * @throws IOException if some low-level IO error has occurred
-   *
-   * @see #findAll(GlobalEntry)
    */
-  GlobalEntry find(String name) throws IOException;
+  URI get(String encName, String scheme) throws IOException;
 
   /**
-   * Equivalent to <tt>listNames(new ArrayList())</tt>.
+   * Fetch all encoded names with the given suffix.
    */
-  public List listNames() throws IOException;
-
-  /**
-   * Fill the given <tt>toList</tt> with all the names
-   * in the registry.
-   * <p>
-   * This should only be used for debugging purposes -- 
-   * it is not efficient.
-   */
-  public List listNames(List toList) throws IOException;
- 
-  /**
-   * Equivalent to <tt>findAll(new ArrayList(), query)</tt>.
-   */
-  public List findAll(GlobalEntry query) throws IOException;
-
-  /**
-   * Given a <tt>GlobalEntry</tt> that specifies the query, find
-   * all matching entries in the registry.
-   * <p>
-   * If <tt>query</tt> is null then all entries are collected.
-   * <p>
-   * This is intended to be similar to JNDI pattern-matching, based
-   * upon the <tt>GlobalEntry.matches(GlobalEntry)</tt> method.
-   * <p>
-   * This should only be used for debugging purposes -- 
-   * it is not efficient.
-   *
-   * @param toList list to fill with matching GlobalEntry elements, 
-   *    where each entry has <tt>(x.hasWildcard() == false)</tt>
-   * @param query pattern for the find
-   *
-   * @return toList
-   *
-   * @see #find(String) faster name-based lookup
-   *
-   * @see GlobalEntry#matches(GlobalEntry) basis for the matching
-   */
-  public List findAll(List toList, GlobalEntry query) throws IOException;
+  Set list(String encSuffix) throws IOException;
 
 }
-

@@ -29,8 +29,6 @@ import java.util.List;
  * server (both HTTP and HTTP urls), such as:<pre>
  *    ("coug" -&gt; "www.cougaar.org, 80, www.cougaar.org, 443")
  * </pre>.
- *
- * @see GlobalRegistry#find(String)
  */
 public final class GlobalEntry 
 implements Serializable, Cloneable {

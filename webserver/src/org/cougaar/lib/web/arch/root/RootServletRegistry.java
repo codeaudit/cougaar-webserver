@@ -105,7 +105,7 @@ implements ServletRegistry {
 
     // register globally
     try {
-      globReg.register(name);
+      globReg.rebind(name);
     } catch (Exception e) {
       // release locally
       try {
@@ -116,9 +116,9 @@ implements ServletRegistry {
       synchronized (localNames) {
         localNames.remove(name);
       }
-      throw new IllegalArgumentException(
-          "Name \""+name+
-          "\" already taken in the global registry");
+      throw new RuntimeException(
+          "Unable to bind \""+name+"\" in the global registry",
+          e);
     }
   }
 
@@ -136,7 +136,7 @@ implements ServletRegistry {
 
     // unregister globally
     try {
-      globReg.unregister(name);
+      globReg.unbind(name);
     } catch (Exception e) {
       // ignore
       ret = false;
@@ -172,7 +172,7 @@ implements ServletRegistry {
 
       // unregister globally
       try {
-        globReg.unregister(name);
+        globReg.unbind(name);
       } catch (Exception e) {
         // ignore
       }

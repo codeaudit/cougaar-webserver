@@ -23,14 +23,12 @@ package org.cougaar.lib.web.service;
 import java.io.IOException;
 import java.util.*;
 
-import javax.naming.directory.DirContext;
-
 import javax.servlet.Servlet;
 
 import org.cougaar.core.component.*;
 import org.cougaar.core.service.LoggingService;
-import org.cougaar.core.service.NamingService;
 import org.cougaar.core.service.ServletService;
+import org.cougaar.core.service.wp.*;
 import org.cougaar.core.node.NodeControlService;
 
 import org.cougaar.lib.web.arch.ServletRegistry;
@@ -101,7 +99,7 @@ implements Component
   private LoggingService log;
 
   // used to create the "rootReg"
-  private NamingService ns;
+  private WhitePagesService wp;
 
   private ServiceBroker sb;
 
@@ -272,20 +270,17 @@ implements Component
 
     // create the global registry
     try {
-      // get the naming service
-      ns = (NamingService)
-        sb.getService(this, NamingService.class, null);
-      if (ns == null) {
+      // get the white pages service
+      wp = (WhitePagesService)
+        sb.getService(this, WhitePagesService.class, null);
+      if (wp == null) {
         throw new RuntimeException(
             "Root servlet-service unable to"+
-            " obtain NamingService");
+            " obtain WhitePagesService");
       }
 
-      // get the root naming directory
-      DirContext rootDir = ns.getRootContext();
-
       // create a server registry
-      this.globReg = new NamingServerRegistry(rootDir);
+      this.globReg = new NamingServerRegistry(wp);
     } catch (RuntimeException re) {
       throw re;
     } catch (Exception e) {
@@ -355,10 +350,10 @@ implements Component
 
   public void unload() {
 
-    // release the naming service
-    if (ns != null) {
-      sb.releaseService(this, NamingService.class, ns);
-      ns = null;
+    // release the white pages service
+    if (wp != null) {
+      sb.releaseService(this, WhitePagesService.class, wp);
+      wp = null;
     }
     if ((log != null) && (log != LoggingService.NULL)) {
       sb.releaseService(this, LoggingService.class, log);

@@ -35,51 +35,59 @@ import org.cougaar.lib.web.arch.ServletRegistry;
  * <p>
  * Specifically, this servlet handles:<ul>
  *   <li>"[/]"<br>
- *       Generates a help page.</li><p>
+ *       Generates an html help page.</li><p>
  *   <li>"/$[/.*]"<br>
- *       Redirects the request to a <b>RANDOM</b> local 
- *       agent name.  This is userful when the client
- *       can assume that any locally-registered agent
- *       can handle the request.</li><p>
+ *       Redirects the request to a <b>RANDOM</b> local agent name.
+ *       This is useful when the client can assume that any
+ *       locally-registered agent can handle the request.</li><p>
  *   <li>"/agents[?args]"<br>
- *       Lists agent names.  The supported URL-parameter 
- *       arguments are:<ul>
- *         <li>"?scope=local" -- local list of agent names 
+ *       Lists agent names on either the local host or in the global
+ *       white pages.  The supported URL-parameter arguments are:<ul>
+ *         <li>"?suffix=" -- list the local agent names (default)</li>
+ *         <li>"?suffix=<i>text</i>" -- list the agent names in the
+ *             global white pages with the matching suffix, where "."
+ *             is the root.  If the suffix doesn't start with ".",
+ *             the substring starting at the first "." is used, and
+ *             if there is no "." then the root (".") is used.</li>
+ *         <li>"?format=html" -- generate an html page (default)</li>
+ *         <li>"?format=text  -- generate plain text, one agent name
+ *             per line</li>
+ *         <li>"?format=select  -- generate an interactive html form
+ *             that uses javascript reloading.  This can be embedded
+ *             in an html frame or popup window.  The selected name
+ *             can be accessed by using javascript:<pre>
+ *               var obj = top.<i>frame</i>.document.agent.name;
+ *               var idx = obj.selectedIndex;
+ *               var name = obj.options[idx].text;
+ *             </pre>  This only works if both frames were generated
+ *             by the same <i>host:port</i>, otherwise javascript will
+ *             throw a "permission denied" error.</li>
+ *         <li>"?sorted=true  -- sort the names in alphabetical order
  *             (default)</li>
- *         <li>"?scope=all"   -- global list of all agent 
- *             names (instead of "?scope=local")</li>
- *         <li>"?format=html" -- generate a pretty html 
- *             page (default)</li>
- *         <li>"?format=text  -- generate plain text, one agent
- *             name per line (instead of "?format=html")</li>
- *         <li>"?sorted=true  -- sort the names in alphabetical 
- *             order (default)</li>
- *         <li>"?sorted=false" -- don't sort the names into
- *             alphabetical order (instead of "?sorted=true")</li>
- *       </ul><p>
- *       For example: "/agents?scope=all&amp;format=text"
+ *         <li>"?sorted=false" -- don't sort the names</li>
+ *         <li>"?scope=all"   -- backwards compatibility for listing
+ *             agents, equivalent to "?suffix=."</li>
+ *       </ul>
  *       <p>
- *       Note this nice feature: With the normal "/$name" 
- *       redirects and this "/agents" support, the client 
- *       can request "/$name/agents" to list all 
- *       co-located agents, regardless of where the named 
- *       agent happens to be located.</li><p>
+ *       For example: "/agents?suffix=.&amp;format=text"
+ *       <p>
+ *       Note this nice feature: With the normal "/$name" redirects
+ *       and this "/agents" support, the client can request
+ *       "/$name/agents" to list all co-located agents, regardless of
+ *       where the named agent happens to be located.</li><p>
  *   <li>"/robots.txt"<br>
  *       Generates this hard-coded response:<pre>
  *           User-agent: *
  *           Disallow: /
- *       </pre>This keeps out web-crawlers, such as 
- *       "google".</li><p>
+ *       </pre>This keeps out web-crawlers, such as "google".</li><p>
  *   <li>"/<i>other</i>"<br>
- *       Same as "/$/<i>other</i>", assuming that 
- *       "/<i>other</i>" doesn't match one of the
- *       cases listed above.<br>
- *       I'd like to remove this case and force users to 
- *       <i>always</i> specify "/$/[.*]", but for now this 
- *       is necessary for backwards compatibility.  Consider 
- *       it <i>deprecated</i>...
+ *       Same as "/$/<i>other</i>", assuming that "/<i>other</i>"
+ *       doesn't match one of the cases listed above.
+ *       <p>
+ *       I'd like to remove this case and force users to <i>always</i>
+ *       specify "/$/[.*]", but for now this is necessary for
+ *       backwards compatibility.  Consider it <i>deprecated</i>...
  * </ul>
- * <p>
  */
 public class RootNonNameServlet 
 implements Servlet {
@@ -157,8 +165,11 @@ implements Servlet {
       "<h2>Welcome to "+
       "<a href=\"http://www.cougaar.org\">Cougaar</a></h2>\n"+
       "Options:<ul>\n"+
-      "<li><a href=\"/agents\">List local agents</a></li>\n"+
-      "<li><a href=\"/agents?scope=all\">List all agents</a></li>\n"+
+      "<li><a href=\"/agents\">Agents on host ("+
+      req.getServerName()+":"+req.getServerPort()+
+      ")</a></li>\n"+
+      "<li><a href=\"/agents?suffix=.\">Agents at the root (.)</a>"+
+      "</li>\n"+
       "</ul>\n"+
       "</body></html>");
     out.close();
@@ -168,46 +179,37 @@ implements Servlet {
       HttpServletRequest req,
       HttpServletResponse res) throws ServletException, IOException {
 
-    // local v.s. global listing
-    boolean listLocals = true;
-    // html v.s. plain-text response
-    boolean useHtml = true;
-    // sorted v.s. unsorted response
-    boolean sorted = true;
-
     // scan url-parameters for:
-    //   "?scope=[all|local]"
-    //   "?format=[text|html]"
+    //   "?format=[text|html|select]"
     //   "?sorted=[true|false]"
-    for (Iterator iter = req.getParameterMap().entrySet().iterator();
-        iter.hasNext();
-        ) {
-      Map.Entry me = (Map.Entry) iter.next();
-      String pName = (String) me.getKey();
-      String[] pValues = (String[]) me.getValue();
-      if ((pValues == null) || (pValues.length <= 0)) {
-        continue;
+    //   "?suffix=[text]"
+
+    // html v.s. plain-text response
+    String format = req.getParameter("format");
+    boolean useHtml = (!("text".equals(format)));
+    boolean useSelect = "select".equals(format);
+    // sorted v.s. unsorted response
+    boolean sorted = (!("false".equals(req.getParameter("sorted"))));
+    // global url-encoded suffix (default is "")
+    String encSuffix = req.getParameter("suffix");
+    String encName = encSuffix;
+    boolean listLocals = (encSuffix == null || encSuffix.length() == 0);
+    if (listLocals) {
+      encSuffix = ".";
+    } else {
+      int j = encSuffix.indexOf('.');
+      if (j < 0) {
+        encSuffix = ".";
+      } else if (j == 0) {
+        encName = null;
+      } else {
+        encSuffix = encSuffix.substring(j);
       }
-      String pValue = pValues[0];
-      if ("scope".equals(pName)) {
-        if ("local".equals(pValue)) {
-          listLocals = true;
-        } else if ("all".equals(pValue)) {
-          listLocals = false;
-        }
-      } else if ("format".equals(pName)) {
-        if ("html".equals(pValue)) {
-          useHtml = true;
-        } else if ("text".equals(pValue)) {
-          useHtml = false;
-        }
-      } else if ("sorted".equals(pName)) {
-        if ("true".equals(pValue)) {
-          sorted = true;
-        } else if ("false".equals(pValue)) {
-          sorted = false;
-        }
-      }
+    }
+
+    // backwards compatibility:
+    if ("all".equals(req.getParameter("scope"))) {
+      listLocals = false;
     }
 
     res.setContentType(
@@ -216,33 +218,133 @@ implements Servlet {
     PrintWriter out = res.getWriter();
 
     // get the listing
-    List names =
-      (listLocals ?
-       localReg.listNames() :
-       globReg.listNames());
+    Collection names;
+    if (listLocals) {
+      names = localReg.listNames();
+    } else {
+      names = globReg.list(encSuffix);
+    }
     int n = ((names != null) ? names.size() : 0);
 
     if (sorted && (n > 0)) {
-      Collections.sort(names);
+      List l;
+      if (names instanceof List) {
+        l = (List) names;
+      } else {
+        l = new ArrayList(names);
+        names = l;
+      }
+      Collections.sort(l);
     }
 
     if (!(useHtml)) {
       // simple line-by-line output
-      for (int i = 0; i < n; i++) {
-        String ni = (String) names.get(i);
-        out.println(ni);
+      if (n > 0) {
+        Iterator iter = names.iterator();
+        for (int i = 0; i < n; i++) {
+          String ni = (String) iter.next();
+          out.println(ni);
+        }
       }
       out.close();
+    } else if (useSelect) {
+      if (listLocals) {
+        // local names
+        out.print(
+            "<html><body>\n"+
+            "<form name=\"agent\">\n"+
+            "<select name=\"name\">\n");
+        // print names
+        if (n > 0) {
+          Iterator iter = names.iterator();
+          for (int i = 0; i < n; i++) {
+            String ni = (String) iter.next();
+            out.print(
+                "<option>"+ni+"</option>\n");
+          }
+        }
+        out.print(
+            "</select>\n"+
+            "</form>\n"+
+            "</body></html>\n");
+        out.close();
+      } else {
+        // interactive javascript form
+        out.print(
+            "<html><head>\n"+
+            "<script language=\"JavaScript\">\n"+
+            "<!--\n"+
+            "function selectAgent() {\n"+
+            "  var idx = document.agent.name.selectedIndex;\n"+
+            "  var val = document.agent.name.options[idx].text;\n"+
+            "  if (val.length > 0 &&\n"+
+            "      val.charAt(0) == '.' &&\n"+
+            "      val != \""+encSuffix+"\") {\n"+
+            "    location.href=\"/agents?format=select&suffix=\"+val;\n"+
+            "  }\n"+
+            "}\n"+
+            "// -->\n"+
+            "</script>\n"+
+            "</head>\n"+
+            "<body>\n"+
+            "<form name=\"agent\">\n"+
+            "<select name=\"name\""+
+            " onChange=\"selectAgent()\""+
+            ">\n");
+        boolean isName = (encName != null);
+        boolean isRoot = ".".equals(encSuffix);
+        // print parents back to root
+        out.print(
+            "<option"+
+            ((isRoot && !isName) ? " selected" : "")+
+            ">.</option>\n");
+        if (!isRoot) {
+          // assert (encSuffix.startsWith("."));
+          for (int j = encSuffix.length(); j > 0; ) {
+            j = encSuffix.lastIndexOf('.', j-1);
+            String s = encSuffix.substring(j);
+            out.print(
+                "<option"+
+                ((j == 0 && !isName) ? " selected" : "") +
+                ">"+s+"</option>\n");
+          }
+        }
+        // print names
+        if (n > 0) {
+          Iterator iter = names.iterator();
+          for (int i = 0; i < n; i++) {
+            String ni = (String) iter.next();
+            out.print(
+                "<option"+
+                ((isName && encName.equals(ni)) ? " selected" : "")+
+                ">"+ni+"</option>\n");
+          }
+        }
+        out.print(
+            "</select>\n"+
+            "</form></body></html>\n");
+        out.close();
+      }
     } else {
       // pretty HTML
-      String title =
-        (listLocals ?
-         ("Local \""+
-          req.getServerName()+
-          ":"+
-          req.getServerPort()+
-          "\" Agents List") :
-         ("All Agents List"));
+      String title;
+      String suffixLinks = null;
+      if (listLocals) {
+        title =
+         "Agent on Host ("+
+         req.getServerName()+":"+req.getServerPort()+
+         ")";
+      } else {
+        if (".".equals(encSuffix)) {
+          title = 
+            "Agents at the Root (\""+
+            "<a href=\"/agents?suffix=.\">.</a>"+
+            "\")";
+        } else {
+          suffixLinks = createSuffixLinks(encSuffix);
+          title = "Agents with Suffix (\""+suffixLinks+"\")";
+        }
+      }
       out.print("<html><head><title>");
       out.print(title);
       out.print(
@@ -251,29 +353,92 @@ implements Servlet {
       out.print(title);
       out.print("</h1>\n");
       if (n > 0) {
-        out.print("<ol>\n");
+        out.print("<table border=\"0\">\n");
+        Iterator iter = names.iterator();
         for (int i = 0; i < n; i++) {
-          String ni = (String) names.get(i);
-          out.print("<li><a href=\"/$");
-          out.print(ni);
-          out.print("/list\">");
-          out.print(ni);
-          out.print("</a></li>\n");
+          String ni = (String) iter.next();
+          out.print(
+              "<tr><td align=\"right\">&nbsp;"+
+              (i+1)+".&nbsp;</td><td align=\"right\">");
+          int j = ni.indexOf('.');
+          String head = 
+            (j > 0 ? ni.substring(0, j) : j < 0 ? ni : null);
+          if (head != null) {
+            // looks like:  head(\.tail)?
+            out.print("<a href=\"/$"+ni+"/list\">"+head+"</a>");
+          }
+          if (listLocals) {
+            // possible different suffix per entry
+            if (j > 0) {
+              String tail = ni.substring(j);
+              String links = createSuffixLinks(tail);
+              out.print(links);
+            }
+          } else {
+            if (j == 0) {
+              // all have the same suffix: \.?mid(\.suffix)
+              int k = ni.indexOf('.', 1);
+              String mid = 
+                (k > 0 ? ni.substring(0, k) : k < 0 ? ni : null);
+              if (mid != null) {
+                out.print(
+                    "<a href=\"/agents?suffix="+
+                    ni+"\">"+mid+"</a>");
+              }
+            }
+            if (suffixLinks != null) {
+              out.print(suffixLinks);
+            }
+          }
+          out.print("</td></tr>\n");
         }
-        out.print("</ol>\n");
+        out.print("</table>\n");
       } else {
-        out.print("<font color=\"red\">zero agents</font>");
+        out.print("<font color=\"red\">zero agents found</font>");
       }
-      if (listLocals) {
-        out.print(
-            "<p>\n"+
-            "<h2>"+
-            "<a href=\"/agents?scope=all\">List all agents</a>"+
-            "</h2>\n");
-      }
-      out.print("</body></html>");
+      out.print(
+          "<p>\n"+
+          "<a href=\"/agents\">Agents on host ("+
+          req.getServerName()+":"+req.getServerPort()+
+          ")</a><br>\n"+
+          "<a href=\"/agents?suffix=.\""+
+          ">Agents at the root (.)</a><br>"+
+          "</body></html>\n");
       out.close();
     }
+  }
+
+  /**
+   * Given a suffix generate an HTML href list.
+   * <p>
+   * For example, given:<pre>
+   *   .a.b.c
+   * </pre>Generate:<pre>
+   *   &lt;a href="/agents?suffix=.a.b.c"&gt;.a&lt;/a&gt; <i>+</i>
+   *   &lt;a href="/agents?suffix=.b.c"&gt;.b&lt;/a&gt; <i>+</i>
+   *   &lt;a href="/agents?suffix=.c"&gt;.c&lt;/a&gt;
+   * </pre>
+   */
+  private static final String createSuffixLinks(String encSuffix) {
+    // assert (encSuffix.charAt(0) == '.');
+    StringBuffer buf = new StringBuffer();
+    int len = encSuffix.length();
+    for (int j = 0; j < len; ) {
+      int k = encSuffix.indexOf('.', j+1);
+      if (k < 0) {
+        if (j >= len) {
+          break;
+        }
+        k = len;
+      }
+      buf.append("<a href=\"/agents?suffix=");
+      buf.append(encSuffix.substring(j));
+      buf.append("\">");
+      buf.append(encSuffix.substring(j,k));
+      buf.append("</a>");
+      j = k;
+    }
+    return buf.toString();
   }
 
   private final void excludeRobots(
