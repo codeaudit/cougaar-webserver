@@ -21,7 +21,6 @@
 package org.cougaar.lib.web.arch.examples;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import javax.servlet.*;
 import javax.servlet.http.*;
 
@@ -116,13 +115,10 @@ public class TestServletEngine {
       serverKeystore = cip+"/"+serverKeystore;
     }
 
-    InetAddress addr = InetAddress.getByName("localhost");
-
     // run the test
     test(
         engineClassname, 
         engineArg, 
-        addr,
         httpPort,
         httpsPort,
         serverKeystore,
@@ -134,7 +130,6 @@ public class TestServletEngine {
   public static void test(
       String engineClassname,
       Object engineArg,
-      InetAddress addr,
       int httpPort,
       int httpsPort,
       String serverKeystore,
@@ -144,13 +139,13 @@ public class TestServletEngine {
 
     HttpConfig httpC = 
       ((httpPort > 0) ?
-       (new HttpConfig(addr, httpPort)) :
+       (new HttpConfig(httpPort)) :
        (null));
 
     HttpsConfig httpsC =
       ((httpsPort > 0) ?
        (new HttpsConfig(
-          new HttpConfig(addr, httpsPort),
+          new HttpConfig(httpsPort),
           clientAuth,
           serverKeystore,
           serverKeypass,
