@@ -15,14 +15,11 @@ and install as usual.
 </li><p>
  
 <li>
-To enable the Servlet server you must add this Java property to
-either the "Node" script or to CSMART:
+By default the servlet server is enabled.  To disable the server,
+add this Java property:
 <pre>
-    -Dorg.cougaar.core.servlet.enable=true
-</pre><p>
-For the 8.6.2 release this "enable" property defaults to "false";
-once the Servlet server has been well tested (build 9.X) it will
-default to "true".
+    -Dorg.cougaar.core.servlet.enable=false
+</pre>
 </li><p>
 
 <li>
@@ -31,20 +28,35 @@ configure the server.  The defaults are usually fine:
 <pre>
  -Dorg.cougaar.lib.web.scanRange=INT          (defaults to 100)
  -Dorg.cougaar.lib.web.http.port=INT          (defaults to 8800, -1 disables HTTP)
- -Dorg.cougaar.lib.web.https.port=INT         (defaults to 8400, -1 disables HTTPS)
+ -Dorg.cougaar.lib.web.https.port=INT         (defaults to -1, -1 disables HTTPS, the typical value is 8400)
  -Dorg.cougaar.lib.web.https.clientAuth=BOOL  (defaults to false) <a name="clientAuth"/>
 </pre><p>
 <p>
-If you want to disable HTTPS then set the "...https.port=-1" and skip ahead
-to <a href="#userAuth">this step</a>.  Disabling HTTPS and only using HTTP 
-simplifies this installation and is a good idea when attempting a 
-first-time installation.  Also, the simple single-Node four-agent 
-"minitestconfig" society is a good first-time test.
+By default HTTPS is disabled, so you can skip ahead to 
+<a href="#userAuth">this step</a>.  
+<p>
+The "scanRange" sets a limit for the server's search for an open port.
+First the given HTTP/HTTPS ports are tried, then they are both 
+incremented by one, tried again, etc.  If more than "scanRange" ports 
+are already in use then the server throws a BindException and quits.  
+Setting the "scanRange" to 1 will force exact port addresses.
+<p>
+Disabling HTTPS and only using HTTP simplifies this installation and 
+is a good idea when attempting a first-time installation.  Also, the 
+simple single-node four-agent "minitestconfig" society is a good 
+first-time test.
 </li><p>
 
 <li>
-To enable HTTPS support (part 1):
+Optional HTTPS support:
 <p>
+<ol>
+<li>
+To enable HTTPS, set the Java property to specify the HTTPS port:<pre>
+  -Dorg.cougaar.web.https.port=8400
+</pre>
+</li><p>
+<li>
 Create a keystore to hold the server's private RSA certificate.  There are 
 many 3rd-party utilities that can be used to create a server certificate,
 but here we'll use the Sun "keytool" <a name="keytool"> that is included 
@@ -60,7 +72,7 @@ Note that the typical JSSE/JDK's "${user.home}/.keystore" and
 "${java.home}/jre/lib/security/.keystore" are <b>NOT</b> assumed!
 <p>
 The certificate alias must be "tomcat" to work with Cougaar's Tomcat 3.3
-Servlet Server implementation, and must be an RSA certificate.  
+servlet Server implementation, and must be an RSA certificate.  
 Additionally the certificate's "name" must be the host's name, such as
 "foo.com" <a name="hostname">.  Here's
 the full keytool command:
@@ -85,8 +97,6 @@ using HTTPS. <a name="lazyKeystore">
 </li><p>
 
 <li>
-To enable HTTPS support (part 2):
-<p>
 Edit the "cougaar.rc" file to add the private keystore filename and 
 password.  The "cougaar.rc" is typically kept as:
 <pre>
@@ -101,7 +111,7 @@ The new lines are:
 
 <li>
 <a name="instClientAuth">
-To additionally enable HTTPS client authentication:
+To additionally enable (optional) HTTPS client authentication:
 <p>
 First, enable the <a href="#clientAuth">"clientAuth" system property</a>.
 <p>
@@ -130,7 +140,18 @@ to contain the server's certificate.
 </li><p>
 
 <li>
+A user-developed servlet can check for 
+<a href="http://java.sun.com/products/servlet/2.2/javadoc/javax/servlet/ServletRequest.html#isSecure()"
+>"HttpServletRequest.isSecure()"</a> to see if a particular request
+used HTTPS security.
+</li><p>
+</ol>
+</li><p>
+
+<li>
 <a name="userAuth">
+Optional username/password authentication:
+<p>
 As an example of username / password authentication, the Tomcat 3.3 
 server implementation is configured to prompt for a login for
 all requests with paths that end in ".secure". <a name="secure">  
@@ -151,79 +172,57 @@ By default (for testing <b><i>only</i></b>) there is one user:
 </pre><br>
 <p>
 To test the login support you should either modify the 
-<a href="#web.xml">"web.xml"</a> and/or define a Servlet with a
+<a href="#web.xml">"web.xml"</a> and/or define a servlet with a
 <a href="#secure">"*.secure"</a> path within your 
 <a href="#ini">.ini</a> files.
 </li><p>
 
 <li>
 <a name="ini">
-By itself the Servlet server will only load the "/list" Servlet, which
-will generates an HTML listing of the Servlets in use (which would
-be a single entry with "/list" by default).  User Servlets are
-added to Agents in the same fashion as Plugins are added to Agents --
-either by modification to ".ini" files or by using CSMART.
+By itself the servlet server will only load the basic "/agents" and
+"/list" servlets that are described in the 
+<a href=
+"../../doc/details/Servlet.html"
+>doc/details/Servlet.html</a>
+guide.
 <p>
-Note that, like Plugins, <i>all</i> Agents must be modified to load the
-Servlet if you want to have the Servlet running on <i>all</i> Agents.
-This may not be appropriate for all Servlets.  The two example Servlets 
-provided below are generic and should be added to all the Agents.
-<p>
-There is a "loader" Component to load simple Servlets:
-<pre>
-   plugin = <b><i>&lt;loader&gt;</i></b>(<b><i>&lt;classname&gt;</i></b>, <b><i>&lt;path&gt;</i></b>)
-</pre><br>
-where the loader is:
-<pre>
-   <b><i>&lt;loader&gt;</i></b> == org.cougaar.core.servlet.SimpleServletComponent <a name="loader">
-</pre><br>
-For build 8.6.2 there are only two example Servlet <b><i>&lt;classname&gt;</i></b>s:
-<pre>
-   org.cougaar.planning.servlet.PlanViewServlet      <i>(/tasks)</i> <a name="tasks">
-   org.cougaar.mlm.ui.psp.transit.CompletionServlet  <i>(/completion)</i><a name="completion">
-</pre><br>
-So these two lines must be added to the ".ini" files:
+User-developed servlets are loaded like plugins.  For this simple test, 
+just add this line to all your agent ".ini" files:
 <pre>
   plugin = org.cougaar.core.servlet.SimpleServletComponent(org.cougaar.planning.servlet.PlanViewServlet, /tasks)
-  plugin = org.cougaar.core.servlet.SimpleServletComponent(org.cougaar.mlm.ui.psp.transit.CompletionServlet, /completion)
 </pre><br>
-<p>
-All Servlet requests must be prefixed with the "/$AgentName/" of the
-particular Agent that is running the Servlet.  For example, if
-there is an Agent named "FOO" <a name="agentname">, a valid URL is
-"http://<a href="#hostname">foo.com</a>/$FOO/tasks".  
-The "/$/" prefix can be used to pick a 
-<b>RANDOM</b> local Agent name, which is appropriate for some Servlets,
-such as the <a href="#tasks">"/tasks"</a> Servlet (which initially 
-generates an Agent-neutral startup page). 
-<p>
-Additionally the prefix "/" is 
-equivalent to "/$/", but that usage should be considered deprecated.
-<p>
-If the Agent is on a remote machine then the request will be
-automatically redirected to the appropriate host.
-<p>
-For 8.6.2 all unknown paths will redirect the request to the old
-PSP server, on port 5555.  This will be disabled in a future (9.X)
-release.
+This will load the "/tasks" servlet, which generates an HTML view of the 
+agent blackboard.  The 
+<a href=
+"../../doc/details/Servlet.html"
+>doc/details/Servlet.html</a>
+guide includes notes on how to develop servlets and links to other
+example servlets.
 </li><p>
 
 <li>
-Start the Nodes as usual.  You should see this message:
+Start the nodes as usual.  You should see this message:
 <pre>
   Starting HTTP  server on port: 8800
+</pre>
+<p>
+If you are also running HTTPS you should additionally see this 
+message:
+<pre>
   Starting HTTPS server on port: 8400
-</pre><p>
+</pre>
 The HTTPS startup may take several seconds (~10 seconds) to initialize 
 the SSL random number generator for secure encryption.
 <p>
 If the Server was unable to start you should see a specific error 
-message, and the <a href="#loader">Servlet "loader"</a> will generate 
-"Unable to obtain servlet service" error messages.
+message, and the user-developed servlets may throw
+"Unable to obtain servlet service" stack traces.
 <p>
-If more than one Node is running on a machine then each Node will
+If more than one node is running on a machine then each node will
 use different ports (8801, 8802, etc).  The base "8800" and "8400"
-can be used.
+ports can usually be assumed by browsers and clients, since the 
+servlet server will automatically redirect requests to the 
+appropriate host:port.
 </li><p>
 
 <li>
@@ -233,42 +232,31 @@ option:
   tools-&gt;Internet Options-&gt;Advanced-&gt;Show Friendly HTTP error messages == UNCHECKED
 </pre><br>
 <p>
-This will allow the Servlet server to display useful "path-not-found"
+This will allow the servlet server to display useful "path-not-found"
 and "unknown-agent" error pages.
 </li><p>
 
 <li>
-In a web browser access the Servlet using HTTP:
+In a web browser load this page:
 <pre>
-  http://<a name="#hostname">foo.com<a>:8800/$/list
+  http://<a name="#hostname">foo.com<a>:8800
 </pre><br>
-to list the running Servlets.  You should see three entries:
-<pre>
-  List of <a href="#agentname">"FOO"</a> Servlets
-
-    1./$FOO/tasks 
-    1./$FOO/completion 
-    2./$FOO/list 
-</pre></br>
+to generate the default "welcome" page.  Click on the
+"list local agents" link, then click on any agent's link.
+This will generate the "/list" listing of servlets that
+are running in that agent.  Click on the "/tasks" entry
+to access the "/tasks" servlet, which will generate an HTML 
+page.
 <p>
-The <a href="#tasks">"/tasks"</a> Servlet allows the user to examine 
-an Agent's Blackboard, and the <a href="#completion">"/completion"</a>
-Servlet provides a per-Agent planning status summary.
-<p>
-To try the HTTPS support:
+To try the HTTPS support, do exactly the same steps as above,
+but start with:
 <pre>
-  https://<a href="#hostname">foo.com</a>:8400/$/list
+  https://<a href="#hostname">foo.com</a>:8400
 </pre><br>
 Your browser will be prompted to accept the server's 
 certificate.  You may be <a href="#lazyKeystore">warned</a> if you 
 use "localhost" instead of the full <a href="#hostname">"foo.com"</a> 
 host name.
-<p>
-A Servlet could check for 
-<a href="http://java.sun.com/products/servlet/2.2/javadoc/javax/servlet/ServletRequest.html#isSecure()"
->"HttpServletRequest.isSecure()"</a> to see if a particular request
-used HTTPS security.  This is not illustrated in the two example 
-Servlets provided with release 8.6.2.
 </li><p>
 
 </ol>
