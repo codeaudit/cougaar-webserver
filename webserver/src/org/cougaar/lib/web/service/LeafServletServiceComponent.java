@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import javax.servlet.Servlet;
+import javax.servlet.ServletConfig;
 
 import org.cougaar.core.component.Component;
 import org.cougaar.core.component.NullService;

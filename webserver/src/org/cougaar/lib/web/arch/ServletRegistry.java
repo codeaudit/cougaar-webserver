@@ -28,6 +28,7 @@ package org.cougaar.lib.web.arch;
 import java.util.List;
 
 import javax.servlet.Servlet;
+import javax.servlet.ServletConfig;
 
 /**
  * 
@@ -57,10 +58,17 @@ public interface ServletRegistry {
   List listNames();
 
   /**
+   * Initialize with the {@link ServletConfig}.
+   */
+  void init(ServletConfig config);
+
+  /**
+   * Get the {@link ServletConfig} set in {@link #init}.
+   */
+  ServletConfig getServletConfig();
+
+  /**
    * Register a (name, servlet) for future "get(name)" requests.
-   * <p>
-   * "Servlet.init(..)" is called with the 
-   * <code>DummyServletConfig</code>.
    * <p>
    * The name must be HTTP-safe -- see RFC 1945 for details.
    * <p>

@@ -36,8 +36,6 @@ import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.cougaar.lib.web.arch.util.DummyServletConfig;
-
 /**
  * A simple <code>Servlet</code> that uses the 
  * <code>GlobalRegistry</code> and the basic HTTP redirect
@@ -188,7 +186,8 @@ implements Servlet {
     // ignore
   }
   public ServletConfig getServletConfig() {
-    return DummyServletConfig.getInstance();
+    // never called
+    return null;
   }
   public String getServletInfo() {
     return "root-remote-redirect";

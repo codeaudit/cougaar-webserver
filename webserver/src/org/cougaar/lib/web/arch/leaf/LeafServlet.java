@@ -36,7 +36,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletRequestWrapper;
 
 import org.cougaar.lib.web.arch.ServletRegistry;
-import org.cougaar.lib.web.arch.util.DummyServletConfig;
 import org.cougaar.lib.web.arch.util.PrefixMatch;
 
 /**
@@ -75,7 +74,7 @@ implements Servlet {
     }
 
     try {
-      unknownPathServlet.init(DummyServletConfig.getInstance());
+      unknownPathServlet.init(getServletConfig());
     } catch (ServletException se) {
       throw new RuntimeException(
           "Unable to initialize the unknown-path-servlet: "+
@@ -84,11 +83,11 @@ implements Servlet {
   }
 
   public void init(ServletConfig config) throws ServletException {
-    // ignore -- we're using the dummy config...
+    servletReg.init(config);
   }
 
   public ServletConfig getServletConfig() {
-    return DummyServletConfig.getInstance();
+    return servletReg.getServletConfig();
   }
 
   public String getServletInfo() {
@@ -109,12 +108,18 @@ implements Servlet {
     // get the path
     String path = hreq.getRequestURI();
 
-    // look for "/$[~]name[/innerPath]"
-    int i = path.indexOf('/', 2);
-    if (i < 0) {
-      i = path.length();
+    // look for "[/$[~]name][/innerPath]"
+    String innerPath = path;
+    int pathLength = (path == null ? 0 : path.length());
+    if (pathLength >= 2 && 
+        path.charAt(0) == '/' &&
+        path.charAt(1) == '$') {
+      int i = path.indexOf('/', 2);
+      if (i < 0) {
+        i = pathLength;
+      }
+      innerPath = path.substring(i);
     }
-    String innerPath = path.substring(i);
 
     // find the matching servlet
     Object o = servletReg.get(innerPath);

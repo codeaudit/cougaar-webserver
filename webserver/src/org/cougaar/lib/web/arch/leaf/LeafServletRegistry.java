@@ -28,11 +28,11 @@ package org.cougaar.lib.web.arch.leaf;
 import java.util.List;
 
 import javax.servlet.Servlet;
+import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
 import javax.servlet.SingleThreadModel;
 
 import org.cougaar.lib.web.arch.ServletRegistry;
-import org.cougaar.lib.web.arch.util.DummyServletConfig;
 import org.cougaar.lib.web.arch.util.PrefixTable;
 import org.cougaar.lib.web.arch.util.PrefixTableImpl;
 import org.cougaar.lib.web.arch.util.SynchronizedServlet;
@@ -47,6 +47,8 @@ implements ServletRegistry {
    * Table of (String, Servlet).
    */
   private final PrefixTable table = new PrefixTableImpl();
+
+  private ServletConfig config;
 
   /**
    */
@@ -67,11 +69,16 @@ implements ServletRegistry {
     return table.list();
   }
 
+  public void init(ServletConfig config) {
+    this.config = config;
+  }
+
+  public ServletConfig getServletConfig() {
+    return config;
+  }
+
   /**
    * Register a (name, servlet) for future "get(name)" requests.
-   * <p>
-   * "Servlet.init(..)" is called with the 
-   * <code>DummyServletConfig</code>.
    * <p>
    * The name must be HTTP-safe -- see RFC 1945 for details.
    * <p>
@@ -84,7 +91,6 @@ implements ServletRegistry {
    * @see #unregister(String)
    */
   public void register(String name, Servlet servlet) {
-
     if ((name == null) ||
         (servlet == null)) {
       throw new NullPointerException();
@@ -95,9 +101,9 @@ implements ServletRegistry {
       servlet = new SynchronizedServlet(servlet);
     }
 
-    // init with dummy config
+    // init with config
     try {
-      servlet.init(DummyServletConfig.getInstance());
+      servlet.init(config);
     } catch (ServletException se) {
       throw new RuntimeException(
           "Unable to initialize servlet: "+

@@ -37,6 +37,7 @@ import java.util.Map;
 import java.util.Properties;
 
 import javax.servlet.Servlet;
+import javax.servlet.ServletConfig;
 
 import org.cougaar.bootstrap.SystemProperties;
 import org.cougaar.core.component.Component;
@@ -329,7 +330,6 @@ implements Component
     try {
       // create and configure the server
       this.servEng = createServer(serverClassname, serverArg);
-      configureRootServlet();
     } catch (RuntimeException re) {
       throw re;
     } catch (Exception e) {
@@ -350,6 +350,16 @@ implements Component
     } catch (Exception e) {
       throw new RuntimeException(
           "Unable to start servlet server", e);
+    }
+
+    try {
+      // configure the server
+      configureRootServlet();
+    } catch (RuntimeException re) {
+      throw re;
+    } catch (Exception e) {
+      throw new RuntimeException(
+          "Unable to create server", e);
     }
 
     try {
@@ -405,6 +415,8 @@ implements Component
   // private utility methods and classes:
   //
 
+  // maybe refactor this into a ServletEngineService with a standard
+  // Tomcat-specific ServiceProvider implementation.
   private static ServletEngine createServer(
       String classname,
       Object arg) throws Exception {
@@ -437,14 +449,14 @@ implements Component
   }
 
   private void configureRootServlet() throws Exception {
-
     this.rootReg = 
       new RootServletRegistry(globReg);
-    Servlet noNameServlet = 
-      new RootNonNameServlet(rootReg, globReg);
+
+    Servlet welcomeServlet = new WelcomeServlet();
+    Servlet agentsServlet = new AgentsServlet(rootReg, globReg);
     Servlet unknownNameServlet = 
       new UnknownRootNameServlet(rootReg);
-    Servlet remoteNameServlet = 
+    Servlet redirectServlet = 
       new RootRedirectServlet(
           globReg,
           unknownNameServlet,
@@ -453,9 +465,9 @@ implements Component
       new RootServlet(
           rootReg, 
           localNode,
-          noNameServlet, 
-          noNameServlet, 
-          remoteNameServlet);
+          welcomeServlet,
+          agentsServlet,
+          redirectServlet);
 
     servEng.setGateway(rootServlet);
   }

@@ -31,11 +31,11 @@ import java.util.List;
 import java.util.Map;
 
 import javax.servlet.Servlet;
+import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
 import javax.servlet.SingleThreadModel;
 
 import org.cougaar.lib.web.arch.ServletRegistry;
-import org.cougaar.lib.web.arch.util.DummyServletConfig;
 import org.cougaar.lib.web.arch.util.SynchronizedServlet;
 
 /**
@@ -51,6 +51,8 @@ implements ServletRegistry {
    * Global registry for all (name, "scheme://host:port") pairs.
    */
   private final GlobalRegistry globReg;
+
+  private ServletConfig config;
 
   /**
    */
@@ -79,10 +81,17 @@ implements ServletRegistry {
     }
   }
 
+  public void init(ServletConfig config) {
+    this.config = config;
+  }
+
+  public ServletConfig getServletConfig() {
+    return config;
+  }
+
   /**
    */
   public void register(String name, Servlet servlet) {
-
     if ((name == null) ||
         (servlet == null)) {
       throw new NullPointerException();
@@ -93,9 +102,9 @@ implements ServletRegistry {
       servlet = new SynchronizedServlet(servlet);
     }
 
-    // init with dummy config
+    // init with config
     try {
-      servlet.init(DummyServletConfig.getInstance());
+      servlet.init(config);
     } catch (ServletException se) {
       throw new RuntimeException(
           "Unable to initialize servlet: "+

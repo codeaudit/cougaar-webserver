@@ -80,21 +80,33 @@ implements Servlet {
 
     // get the "/$name[/.*]"
     String path = req.getRequestURI();
-    // assert ((path != null) && (path.startsWith("/$")))
-    String name;
-    int sepIdx = path.indexOf('/', 2);
-    if (sepIdx < 0) {
-      name = path.substring(2);
-    } else {
-      name = path.substring(2, sepIdx);
-      if (sepIdx < (path.length() - 1)) {
-        name = path.substring(2, sepIdx);
-        String trimPath = path.substring(sepIdx);
-        displayErrorPage(req, res, name, trimPath);
-        return;
+
+    String name = realName;
+    String trimPath = null;
+
+    int pathLength = (path == null ? 0 : path.length());
+    if (pathLength > 1) {
+      if (pathLength >= 2 &&
+          path.charAt(0) == '/' &&
+          path.charAt(1) == '$') {
+        int j = path.indexOf('/', 2);
+        if (j < 0) {
+          j = pathLength;
+        } else if (j < (pathLength - 1)) {
+          trimPath = path.substring(j);
+        }
+        if (j > 2) {
+          name = path.substring(2, j);
+        }
+      } else {
+        trimPath = path;
       }
     }
-    displayHelpPage(req, res, name);
+    if (trimPath == null) {
+      displayHelpPage(req, res, name);
+    } else {
+      displayErrorPage(req, res, name, trimPath);
+    }
   }
 
   private final void displayHelpPage(

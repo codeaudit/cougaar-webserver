@@ -109,12 +109,21 @@ implements Servlet {
 
     // get the "/$name[/.*]"
     String path = req.getRequestURI();
-    // assert ((path != null) && (path.startsWith("/$")))
-    int sepIdx = path.indexOf('/', 2);
-    if (sepIdx < 0) {
-      sepIdx = path.length();
+    int pathLength = (path == null ? 0 : path.length());
+    String name = realName;
+    String prefix = "";
+    if (pathLength > 2 &&
+        path.charAt(0) == '/' &&
+        path.charAt(1) == '$') {
+      int j = path.indexOf('/', 2);
+      if (j < 0) {
+        j = pathLength;
+      }
+      if (j > 2) {
+        name = path.substring(2, j);
+      }
+      prefix = path.substring(0, j);
     }
-    String name = path.substring(2, sepIdx);
 
     List pathList = reg.listNames();
     int n = ((pathList != null) ? pathList.size() : 0);
@@ -146,17 +155,17 @@ implements Servlet {
       for (int i = 0; i < n; i++) {
         String pi = (String) pathList.get(i);
         out.print(
-            "<li><a href=\"/$"+
-            name+pi+
-            "\">/$"+
-            name+pi+
+            "<li><a href=\""+
+            prefix+pi+
+            "\">"+
+            prefix+pi+
             "</a></li>\n");
       }
       out.print("</ol></body></html>\n");
     } else {
       for (int i = 0; i < n; i++) {
         String pi = (String) pathList.get(i);
-        out.println("/$"+name+pi);
+        out.println(prefix+pi);
       }
     }
     out.close();
