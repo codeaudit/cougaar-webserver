@@ -1,0 +1,28 @@
+<body>
+This package contains the <a href="http://cougaar.org">Cougaar</a>
+implementation of the {@link
+org.cougaar.core.service.ServletService}, which provides HTTP
+access into Cougaar agents.
+<p>
+This package defines the node-level {@link
+org.cougaar.lib.web.service.RootServletServiceComponent}, which
+creates the {@link org.cougaar.lib.web.arch.server.ServletEngine}
+and advertises the {@link
+org.cougaar.lib.web.service.RootServletService}.  The standard {@link
+org.cougaar.lib.web.arch.server.ServletEngine} implementation is
+based on <a href="http://jakarta.apache.org/tomcat">Tomcat</a> and is
+defined in the "webtomcat" module ("org.cougaar.lib.web.tomcat") to
+avoid compile dependencies and allow for non-Tomcat implementations.
+From the {@link org.cougaar.lib.web.arch.server.ServletEngine}'s
+point of view, there is just one "gateway" servlet, the
+{@link org.cougaar.lib.web.arch.root.RootServlet}.
+Agents are loaded with the {@link
+org.cougaar.lib.web.service.LeafServletServiceComponent}, which
+obtains the {@link org.cougaar.lib.web.service.RootServletService},
+registers the agent's "/$name" path, and advertises the {@link
+org.cougaar.core.service.ServletService} for component use.
+<p>
+For more detail, including configuration options and example servlets,
+see the 
+<a href="http://docs.cougaar.org">Cougaar Developers' Guide</a>.
+</body>

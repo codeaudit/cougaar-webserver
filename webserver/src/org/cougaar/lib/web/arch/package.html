@@ -1,0 +1,26 @@
+<body>
+This package contains the <a href="http://cougaar.org">Cougaar</a>
+support classes for the {@link
+org.cougaar.core.service.ServletService} loaded by the {@link 
+org.cougaar.lib.web.service.RootServletServiceComponent}.
+<p>
+The "arch" package defines generic APIs and support classes for
+the {@link org.cougaar.lib.web.arch.server.ServletEngine} and
+"root/leaf" servlets.  In Cougaar, the "root" is the node-level
+servlet that forwards "/$" requests to local agents or redirects
+the client to the appropriate remote host, and the "leaf" is
+the per-agent servlet that forwards requests to that agent's
+servlets.  For example, the path "/$x/y" is received by the {@link
+org.cougaar.lib.web.arch.server.ServletEngine}'s "gateway" and
+passed to the {@link org.cougaar.lib.web.arch.root.RootServlet},
+which sees the "/$x" and forwards to local agent "x"'s {@link
+org.cougaar.lib.web.arch.leaf.LeafServlet}, which forwards to that
+agent's "/y" servlet.
+<p>
+The "arch" only depends upon "javax.servlet.*"; all the service
+details and {@link org.cougaar.lib.web.arch.server.ServletEngine}
+implementation are in {@link org.cougaar.lib.web.service}.
+<p>
+For more detail, see the
+<a href="http://docs.cougaar.org">Cougaar Developers' Guide</a>.
+</body>
