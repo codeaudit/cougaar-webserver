@@ -24,7 +24,6 @@ import java.io.File;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.net.BindException;
-import java.net.ServerSocket;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
@@ -307,7 +306,8 @@ implements Component
     } catch (RuntimeException re) {
       throw re;
     } catch (Exception e) {
-      throw new RuntimeException(e.getMessage());
+      throw new RuntimeException(
+          "Unable to create naming registry", e);
     }
 
     try {
@@ -317,7 +317,8 @@ implements Component
     } catch (RuntimeException re) {
       throw re;
     } catch (Exception e) {
-      throw new RuntimeException(e.getMessage());
+      throw new RuntimeException(
+          "Unable to create server", e);
     }
 
     if (log.isDebugEnabled()) {
@@ -335,7 +336,8 @@ implements Component
     } catch (RuntimeException re) {
       throw re;
     } catch (Exception e) {
-      throw new RuntimeException(e.getMessage());
+      throw new RuntimeException(
+          "Unable to start servlet server", e);
     }
 
     try {
@@ -346,7 +348,10 @@ implements Component
       throw re;
     } catch (Exception e) {
       servEng.stop();
-      throw new RuntimeException(e.getMessage());
+      throw new RuntimeException(
+          "Unable to register in the name server"+
+          " (http="+usedHttpPort+", https="+usedHttpsPort+")",
+          e);
     }
 
     // create and advertise our service
@@ -366,7 +371,8 @@ implements Component
     } catch (RuntimeException re) {
       throw re;
     } catch (Exception e) {
-      throw new RuntimeException(e.getMessage());
+      throw new RuntimeException(
+          "Unable to stop server", e);
     }
     super.stop();
   }
@@ -494,7 +500,7 @@ implements Component
         if (log.isErrorEnabled()) {
           log.error(msg);
         }
-        throw new java.net.BindException(msg);
+        throw new BindException(msg);
       }
 
       if (log.isDebugEnabled()) {
@@ -508,10 +514,15 @@ implements Component
              ("")));
       }
 
+      servEng.configure(
+          httpPort,
+          httpsPort,
+          config);
+
       try {
-        startServer(httpPort, httpsPort);
+        servEng.start();
         break;
-      } catch (java.net.BindException be) {
+      } catch (BindException be) {
         // port(s) in use, try again
       }
 
@@ -537,38 +548,6 @@ implements Component
            ("\nHTTPS: "+usedHttpsPort) :
            ("")));
     }
-  }
-
-  /**
-   * Start a server at the given HTTP/HTTPS ports.
-   *
-   * @throws java.net.BindException if a port is in use
-   * @throws Exception some other problem
-   */
-  private void startServer(
-      int  httpPort,
-      int httpsPort) throws Exception {
-
-    // quick-check to see if the ports are free
-    if (httpPort  > 0) {
-      (new java.net.ServerSocket(httpPort )).close();
-    }
-    if (httpsPort > 0) {
-      (new java.net.ServerSocket(httpsPort)).close();
-    }
-
-    // ports seem free -- try to launch the full server
-    //
-    // note that another process might grab the ports,
-    // in which case a "javax.net.BindingException" will
-    // be thrown.  This is okay so long as the caller can
-    // attempt "servEng.start()" again.
-    servEng.configure(
-        httpPort,
-        httpsPort,
-        config);
-    servEng.start();
-
   }
 
   /**

@@ -23,7 +23,8 @@ package org.cougaar.lib.web.tomcat;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
-import java.net.BindException;
+import java.net.ServerSocket;
+import java.net.SocketException;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -185,7 +186,7 @@ public class TomcatServletEngine
     return isRunning;
   }
 
-  public void start() throws IOException {
+  public void start() throws SocketException {
 
     if (isRunning()) {
       throw new IllegalStateException(
@@ -202,6 +203,20 @@ public class TomcatServletEngine
     // launch tomcat with specified ports
     // tomcat automatically loads the HookServlet due to XML scripts
     try { 
+
+      // quick-check to see if the ports are free
+      try {
+        if (httpPort  > 0) {
+          (new ServerSocket(httpPort )).close();
+        }
+        if (httpsPort > 0) {
+          (new ServerSocket(httpsPort)).close();
+        }
+      } catch (SocketException se) {
+        throw new LifecycleException(se);
+      }
+
+      // launch the server
       EmbeddedTomcat et = new EmbeddedTomcat();
       
       et.configure(serverOptions);
@@ -236,16 +251,16 @@ public class TomcatServletEngine
       et.embeddedStart();
     } catch (LifecycleException te) {
       Throwable teCause = te.getThrowable();
-      if (teCause instanceof BindException) {
-        BindException be = (BindException) teCause;
-        String msg = be.getMessage();
+      if (teCause instanceof SocketException) {
+        SocketException se = (SocketException) teCause;
+        String msg = se.getMessage();
         if ((msg != null) &&
             ((msg.indexOf("Address already in use") >= 0) ||
              (msg.indexOf("Address in use") >= 0))) {
           // port is already in use
-          throw be;
+          throw se;
         }
-      } 
+      }
       throw new RuntimeException(
           "Tomcat-internal exception: ", te);
     } catch (Exception e) {
