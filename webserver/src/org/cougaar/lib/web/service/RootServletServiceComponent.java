@@ -340,10 +340,6 @@ implements Component
       log.debug(
           "Root server ("+servEng+") is running");
     }
-  }
-
-  public void start() {
-    super.start();
 
     try {
       // start the server
@@ -374,7 +370,8 @@ implements Component
     sb.addService(ServletService.class, rootSP);
   }
 
-  public void stop() {
+  public void unload() {
+
     try {
       // revoke our service
       if (rootSP != null) {
@@ -389,10 +386,6 @@ implements Component
       throw new RuntimeException(
           "Unable to stop server", e);
     }
-    super.stop();
-  }
-
-  public void unload() {
 
     // release the white pages service
     if (wp != null) {
