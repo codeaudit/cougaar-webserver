@@ -36,6 +36,8 @@ import org.cougaar.lib.web.arch.ServletRegistry;
 import org.cougaar.lib.web.arch.root.*;
 import org.cougaar.lib.web.arch.server.*;
 
+import org.cougaar.util.Parameters;
+
 /**
  * A root-level (Node) <code>Component</code> that adds a
  * <code>ServiceProvider</code> for <code>ServletService</code>, 
@@ -72,61 +74,39 @@ implements Component
     this.sb = bs.getServiceBroker();
   }
 
-  /**
-   * The parameter is an Object[] of:<pre>
-   *   String servlet engine classname
-   *   Object servlet engine configuration info
-   *   Integer HTTP  port, or null to disable HTTP
-   *   Integer HTTPS port, or null to disable HTTPS
-   *   String public keystore for trusted clients 
-   *   String private keystore for the server certificate
-   *   String private password for the server keystore
-   *   String private keyname for the server certificate
-   *   Boolean enable/disable client authentication
-   * </pre>.
-   * <p>
-   * If the keystore file name does not start with "/" then
-   * the ${org.cougaar.install.path}+"/" is prefixed.
-   * <p>
-   * Magic ordering of this String[] -- need to fix
-   * to make this cleaner, but still want to keep the API
-   * simple.  Maybe a "java.util.Properties"?
-   */
-  public void setParameter(Object o) {
-    if (!(o instanceof Object[])) {
-      throw new IllegalArgumentException(
-          "Expecting a \"Object[]\" parameter, not \""+
-          ((o != null) ? o.getClass().getName() : "null")+
-          "\"");
-    }
-    Object[] oa = (Object[]) o;
+  public void initialize() {
+    super.initialize();
 
-    // get all these parameters:
-    int httpPort;
-    int httpsPort;
-    String trustKeystore;
-    String serverKeystore;
-    String serverKeyname;
-    String serverKeypass;
-    boolean clientAuth;
-    try {
-      this.serverClassname = (String) oa[0];
-      this.serverArg = oa[1];
-      httpPort = 
-        ((oa[2] != null) ? (((Integer) oa[2]).intValue()) : (-1));
-      httpsPort = 
-        ((oa[3] != null) ? (((Integer) oa[3]).intValue()) : (-1));
-      trustKeystore = (String) oa[4];
-      serverKeystore = (String) oa[5];
-      serverKeyname = (String) oa[6];
-      serverKeypass = (String) oa[7];
-      clientAuth = 
-        ((oa[8] != null) && ((Boolean) oa[8]).booleanValue());
-    } catch (Exception e) {
-      throw new IllegalArgumentException(
-          "Illegal "+this.getClass().getName()+" parameter:"+
-          e.getMessage());
+    // hard-code the servlet engine implementation
+    this.serverClassname = 
+      "org.cougaar.lib.web.tomcat.TomcatServletEngine";
+    this.serverArg = 
+      "webtomcat/data";
+
+    // config data, maybe from system properties:
+    int httpPort = 8800;  // FIXME make this (nsPort + 100)?
+    int httpsPort = 8400; // FIXME make this (httpPort + 100)?
+    boolean clientAuth = false; // FIXME make a parameter?
+
+    // private keystore/keypass for HTTPS
+    String serverKeystore = null;
+    String serverKeypass = null;
+    if (httpsPort > 0) {
+      // look in the "cougaar.rc"
+      serverKeystore = Parameters.findParameter("org.cougaar.web.keystore");
+      serverKeypass  = Parameters.findParameter("org.cougaar.web.keypass");
+      if ((serverKeystore == null) ||
+          (serverKeypass == null)) {
+        throw new RuntimeException(
+            "HTTPS requires \"cougaar.rc\" to contain both"+
+            " \"org.cougaar.web.keystore=..\" and"+
+            " \"org.cougaar.web.keypass=..\" entries");
+      }
     }
+
+    // use of tomcat forces these two parameters:
+    String serverKeyname = "tomcat";
+    String trustKeystore = serverKeystore;
 
     // prepend keystore paths with install-path
     String cip = System.getProperty("org.cougaar.install.path");
@@ -139,7 +119,7 @@ implements Component
       trustKeystore = cip+"/"+trustKeystore;
     }
 
-    // this is constant:
+    // server always runs on localhost
     InetAddress localAddr;
     try {
       localAddr = InetAddress.getLocalHost();
@@ -148,7 +128,7 @@ implements Component
           "Unable to get localhost address: "+e.getMessage());
     }
 
-    // create the HTTP config
+    // create the HTTP  config
     this.httpConfig = 
       ((httpPort > 0) ?
        (new HttpConfig(localAddr, httpPort)) :
@@ -161,10 +141,16 @@ implements Component
           new HttpConfig(localAddr, httpsPort),
           clientAuth,
           serverKeystore,
-          serverKeyname,
           serverKeypass,
+          serverKeyname,
           trustKeystore)) :
        (null));
+  }
+
+  public void setParameter(Object o) {
+    throw new UnsupportedOperationException(
+        "Root servlet-service not expecting a parameter: "+
+        ((o != null) ? o.getClass().getName() : "null"));
   }
 
   public void load() {
