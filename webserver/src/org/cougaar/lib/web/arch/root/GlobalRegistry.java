@@ -23,9 +23,6 @@ package org.cougaar.lib.web.arch.root;
 import java.io.IOException;
 import java.util.List;
 
-import org.cougaar.lib.web.arch.server.HttpConfig;
-import org.cougaar.lib.web.arch.server.HttpsConfig;
-
 /**
  * Interface to a global registry of servers and their
  * (globally-unique) child names.
@@ -46,18 +43,6 @@ import org.cougaar.lib.web.arch.server.HttpsConfig;
  * The names must be HTTP safe -- see RFC 1945 for details.
  */
 public interface GlobalRegistry {
-
-  /**
-   * Equivalent to taking the port from
-   * both HTTP[S] configs and calling the
-   * <tt>configure(int,int)</tt> method.
-   * <p>
-   * If a parameter is null then it is treated as
-   * (-1).
-   */
-  void configure(
-      HttpConfig httpConfig,
-      HttpsConfig httpsConfig) throws IOException;
 
   /**
    * Configure the local server's HTTP and HTTP addresses.

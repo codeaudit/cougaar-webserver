@@ -28,6 +28,7 @@ import javax.naming.directory.DirContext;
 import javax.servlet.Servlet;
 
 import org.cougaar.core.component.*;
+import org.cougaar.core.service.LoggingService;
 import org.cougaar.core.service.NamingService;
 import org.cougaar.core.servlet.ServletService;
 import org.cougaar.core.node.NodeControlService;
@@ -72,6 +73,10 @@ import org.cougaar.util.Parameters;
  *   is passed then HTTP listening is disabled.  Also see the 
  *    "org.cougaar.lib.web.scanRange" property.
  *
+ * @property org.cougaar.lib.web.http.factory
+ *   Optional classname for factory used to create HTTP server
+ *   sockets.  Defaults to a standard socket factory.
+ *
  * @property org.cougaar.lib.web.https.port
  *   The base integer port for the HTTPS server, which defaults to
  *   -1.  The most common value is 8400.  If a negative number is 
@@ -82,8 +87,9 @@ import org.cougaar.util.Parameters;
  *   Used to enable HTTPS client-authentication.  Defaults to
  *   false.
  *
- * @property org.cougaar.lib.web.debug
- *   Enable low-level debugging output.  Defaults to false.
+ * @property org.cougaar.lib.web.https.factory
+ *   Optional classname for factory used to create HTTPS (SSL) 
+ *   server sockets.  Defaults to a standard SSL socket factory.
  * </pre>
  *
  * @see ServletService
@@ -92,6 +98,8 @@ public class RootServletServiceComponent
 extends org.cougaar.util.GenericStateModelAdapter
 implements Component 
 {
+  private LoggingService log;
+
   // used to create the "rootReg"
   private NamingService ns;
 
@@ -100,22 +108,23 @@ implements Component
   // from initialize
   private String serverClassname;
   private Object serverArg;
-  private HttpConfig initHttpConfig;
-  private HttpsConfig initHttpsConfig;
   private int scanRange;
-  private boolean debug;
+
+  private Map serverOptions;
+  private int initHttpPort;
+  private int initHttpsPort;
+  private Map httpOptions;
+  private Map httpsOptions;
 
   private GlobalRegistry globReg;
   private ServiceProvider rootSP;
   private ServletEngine servEng;
   private ServletRegistry rootReg;
 
-  // actual HTTP/HTTPS configs that were used.
-  //
-  // only different than initHttp[s]Config if the suggested
-  // port(s) was in use.
-  private HttpConfig usedHttpConfig;
-  private HttpsConfig usedHttpsConfig;
+  // actual HTTP/HTTPS ports that were used, in case the 
+  // initial ports (initHttp[s]Port) are already in use.
+  private int usedHttpPort;
+  private int usedHttpsPort;
 
   public void setBindingSite(BindingSite bs) {
     // only care about the service broker
@@ -126,67 +135,24 @@ implements Component
     this.sb = ncs.getRootServiceBroker();
   }
 
-  public void initialize() {
-    super.initialize();
+  public void setParameter(Object o) {
+    throw new UnsupportedOperationException(
+        "Root servlet-service not expecting a parameter: "+
+        ((o != null) ? o.getClass().getName() : "null"));
+  }
 
-    this.debug =
-      Boolean.getBoolean(
-          "org.cougaar.lib.web.debug");
+  private void configureParameters() {
+    // this occurs after "load()" to allow logging
 
-    // config data from system properties:
+    // all paths are relative to the "$org.cougaar.install.path"
+    String cip =
+      System.getProperty("org.cougaar.install.path");
+
+    // set the server parameters
     this.scanRange = 
       Integer.getInteger(
           "org.cougaar.lib.web.scanRange",
           100).intValue();
-    int httpPort = 
-      Integer.getInteger(
-          "org.cougaar.lib.web.http.port",
-          8800).intValue();
-    int httpsPort = 
-      Integer.getInteger(
-          "org.cougaar.lib.web.https.port",
-          (-1)).intValue();
-    boolean clientAuth =
-      Boolean.getBoolean(
-          "org.cougaar.lib.web.https.clientAuth");
-
-    // paths are relative to the "$org.cougaar.install.path"
-    String cip =
-      System.getProperty("org.cougaar.install.path");
-
-    // config data from the "cougaar.rc", for security reasons
-    //
-    // private keystore/keypass for HTTPS
-    String serverKeystore = null;
-    String serverKeypass = null;
-    if (httpsPort > 0) {
-      // look in the "cougaar.rc"
-      serverKeystore = 
-        Parameters.findParameter("org.cougaar.web.keystore");
-      serverKeypass  = 
-        Parameters.findParameter("org.cougaar.web.keypass");
-      if ((serverKeystore == null) ||
-          (serverKeypass == null)) {
-        throw new RuntimeException(
-            "HTTPS requires \"cougaar.rc\" to contain both"+
-            " \"org.cougaar.web.keystore=..\" and"+
-            " \"org.cougaar.web.keypass=..\" entries");
-      }
-      // keystore is relative to "$org.cougaar.install.path"
-      serverKeystore = cip+"/"+serverKeystore;
-    }
-
-    // hard-code the servlet engine implementation
-    this.serverClassname = 
-      "org.cougaar.lib.web.tomcat.TomcatServletEngine";
-    this.serverArg = 
-      cip+"/webtomcat/data";
-    String serverKeyname = "tomcat";
-    String trustKeystore = serverKeystore;
-
-    //
-    // examine the parameters
-    //
 
     if (scanRange < 1) {
       throw new IllegalArgumentException(
@@ -194,56 +160,115 @@ implements Component
           scanRange+"\"");
     }
 
-    if ((httpPort  > 0) &&
-        (httpsPort > 0) &&
-        (httpPort == httpsPort)) {
+    // hard-code the servlet engine implementation
+    this.serverClassname = 
+      "org.cougaar.lib.web.tomcat.TomcatServletEngine";
+    this.serverArg = 
+      cip+"/webtomcat/data";
+
+    // set the http and https ports
+    this.initHttpPort = 
+      Integer.getInteger(
+          "org.cougaar.lib.web.http.port",
+          8800).intValue();
+    this.initHttpsPort = 
+      Integer.getInteger(
+          "org.cougaar.lib.web.https.port",
+          (-1)).intValue();
+    if ((initHttpPort  > 0) &&
+        (initHttpsPort > 0) &&
+        (initHttpPort == initHttpsPort)) {
       throw new IllegalArgumentException(
-          "HTTP port ("+httpPort+
-          ") and HTTPS port ("+httpsPort+
+          "HTTP port ("+initHttpPort+
+          ") and HTTPS port ("+initHttpsPort+
           ") must be different!");
     }
 
-    // create the HTTP  config
+    // for now these protocol options are fixed.
     //
-    // this is the *suggested* config.  If the "httpPort"
-    // is in use then another port will be used.
-    this.initHttpConfig = 
-      ((httpPort > 0) ?
-       (new HttpConfig(httpPort)) :
-       (null));
+    // in the future this may be expanded to support
+    // new options, such as socket timeouts, etc.
 
-    // create the HTTPS config
-    this.initHttpsConfig =
-      ((httpsPort > 0) ?
-       (new HttpsConfig(
-          new HttpConfig(httpsPort),
-          clientAuth,
-          serverKeystore,
-          serverKeypass,
-          serverKeyname,
-          trustKeystore)) :
-       (null));
+    // use our logging level to set the server's logging level
+    serverOptions = 
+      Collections.singletonMap(
+          "debug", 
+          Boolean.toString(log.isDebugEnabled()));
 
-    if (debug) {
-      System.out.println(
-          "Initialized server with "+
-          ((initHttpConfig != null) ?
-           ("\nHTTP : "+initHttpConfig) :
-           (""))+
-          ((initHttpsConfig != null) ?
-           ("\nHTTPS: "+initHttpsConfig) :
-           ("")));
+    httpOptions = Collections.EMPTY_MAP;
+    if (initHttpPort > 0) {
+      String httpFactory =
+        System.getProperty(
+            "org.cougaar.lib.web.http.factory");
+      if (httpFactory != null) {
+        httpOptions = 
+          Collections.singletonMap("factory", httpFactory);
+      }
     }
-  }
 
-  public void setParameter(Object o) {
-    throw new UnsupportedOperationException(
-        "Root servlet-service not expecting a parameter: "+
-        ((o != null) ? o.getClass().getName() : "null"));
+    if (initHttpsPort > 0) {
+      this.httpsOptions = new HashMap(13);
+      String httpsFactory =
+        System.getProperty(
+            "org.cougaar.lib.web.https.factory");
+      if (httpsFactory != null) {
+        httpsOptions.put("factory", httpsFactory);
+      }
+
+      String clientAuth = 
+        System.getProperty(
+            "org.cougaar.lib.web.https.clientAuth");
+      if (clientAuth != null) {
+        httpsOptions.put("clientAuth", clientAuth);
+      }
+
+      // config data from the "cougaar.rc", for security reasons
+      String serverKeystore = 
+        Parameters.findParameter("org.cougaar.web.keystore");
+      if (serverKeystore != null) {
+        // keystore is relative to "$org.cougaar.install.path"
+        serverKeystore = cip+"/"+serverKeystore;
+        httpsOptions.put("keystore", serverKeystore);
+      }
+
+      String serverKeypass  = 
+        Parameters.findParameter("org.cougaar.web.keypass");
+      if (serverKeypass != null) {
+        httpsOptions.put("keypass", serverKeypass);
+      }
+
+      // these are hard-coded
+      httpsOptions.put("keyname", "tomcat");
+      if (serverKeystore != null) {
+        httpsOptions.put("trustKeystore", serverKeystore);
+      }
+    } else {
+      httpsOptions = Collections.EMPTY_MAP;
+    }
+
   }
 
   public void load() {
     super.load();
+
+    log = (LoggingService)
+      sb.getService(this, LoggingService.class, null);
+    if (log == null) {
+      log = LoggingService.NULL;
+    }
+
+    configureParameters();
+
+    if (log.isDebugEnabled()) {
+      log.debug(
+          "Server options: "+serverOptions);
+      log.debug(
+          "HTTP port: "+initHttpPort+
+          " Options: "+httpOptions);
+      log.debug(
+          "HTTPS port: "+initHttpsPort+
+          " Options: "+httpsOptions);
+    }
 
     // create the global registry
     try {
@@ -277,8 +302,8 @@ implements Component
       throw new RuntimeException(e.getMessage());
     }
 
-    if (debug) {
-      System.out.println(
+    if (log.isDebugEnabled()) {
+      log.debug(
           "Root server ("+servEng+") is running");
     }
   }
@@ -287,7 +312,7 @@ implements Component
     super.start();
 
     try {
-      // start the server, set the "usedHttp[s]Config"s
+      // start the server
       startServer();
     } catch (RuntimeException re) {
       throw re;
@@ -297,7 +322,7 @@ implements Component
 
     try {
       // configure the reg, which alters the rootReg
-      globReg.configure(usedHttpConfig, usedHttpsConfig);
+      globReg.configure(usedHttpPort, usedHttpsPort);
     } catch (RuntimeException re) {
       servEng.stop();
       throw re;
@@ -334,6 +359,10 @@ implements Component
     if (ns != null) {
       sb.releaseService(this, NamingService.class, ns);
       ns = null;
+    }
+    if ((log != null) && (log != LoggingService.NULL)) {
+      sb.releaseService(this, LoggingService.class, log);
+      log = null;
     }
 
     super.unload();
@@ -400,15 +429,6 @@ implements Component
    */
   private void startServer() throws Exception {
 
-    int httpPort  = 
-      ((initHttpConfig  != null) ? 
-       initHttpConfig.getPort() : 
-       -1);
-    int httpsPort = 
-      ((initHttpsConfig != null) ? 
-       initHttpsConfig.getHttpConfig().getPort() : 
-       -1);
-
     // set the scan range
     int maxI = scanRange;
 
@@ -416,59 +436,70 @@ implements Component
     //
     // would make scanning more efficient...
 
-    // try to start the server.
-    for (int i = 0; i < maxI; i++) {
+    int httpPort  = initHttpPort;
+    int httpsPort = initHttpsPort;
 
-      if (debug) {
-        System.out.println(
+    // scan the ports, try to launch the server
+    for (int i = 0; ; i++) {
+
+      if (i >= maxI) {
+        // failure; tried too many ports
+        String msg = 
+          "Unable to launch server"+
+          ((httpPort > 0) ? 
+           (", attempted "+maxI+" HTTP  ports ("+
+            httpPort+"-"+(httpPort +(maxI-1))+")") :
+           (""))+
+          ((httpPort > 0) ? 
+           (", attempted "+maxI+" HTTPS ports ("+
+            httpsPort+"-"+(httpsPort+(maxI-1))+")") :
+           (""));
+        if (log.isErrorEnabled()) {
+          log.error(msg);
+        }
+        throw new java.net.BindException(msg);
+      }
+
+      if (log.isDebugEnabled()) {
+        log.debug(
             "Server launch attempt["+i+" / "+maxI+"]:"+
             ((httpPort > 0) ? 
-             (" HTTP  port ("+(httpPort+i)+")") :
+             (" HTTP  port ("+httpPort+")") :
              (""))+
             ((httpPort > 0) ? 
-             (" HTTPS port ("+(httpsPort+i)+")") :
+             (" HTTPS port ("+httpsPort+")") :
              ("")));
       }
 
       try {
-        startServer(
-            ((httpPort  > 0) ? (httpPort  + i) : (-1)),
-            ((httpsPort > 0) ? (httpsPort + i) : (-1)));
+        startServer(httpPort, httpsPort);
+        break;
       } catch (java.net.BindException be) {
         // port(s) in use, try again
-        continue;
       }
 
-      // success
-      if (debug) {
-        System.out.println(
-            "\nServer launched with: "+
-            ((httpPort > 0) ? 
-             ("\nHTTP : "+usedHttpConfig) :
-             (""))+
-            ((httpPort > 0) ? 
-             ("\nHTTPS: "+usedHttpsConfig) :
-             ("")));
+      if (httpPort > 0) {
+        ++httpPort;
       }
-
-      return;
+      if (httpsPort > 0) {
+        ++httpsPort;
+      }
     }
 
-    // failure; tried too many ports
-    String msg = 
-      "Unable to launch server"+
-      ((httpPort > 0) ? 
-       (", attempted "+maxI+" HTTP  ports ("+
-        httpPort+"-"+(httpPort +(maxI-1))+")") :
-       (""))+
-      ((httpPort > 0) ? 
-       (", attempted "+maxI+" HTTPS ports ("+
-        httpsPort+"-"+(httpsPort+(maxI-1))+")") :
-       (""));
-    if (debug) {
-      System.out.println(msg);
+    // success; save the config
+    this.usedHttpPort  = httpPort;
+    this.usedHttpsPort = httpsPort;
+
+    if (log.isInfoEnabled()) {
+      log.info(
+          "\nServer launched with: "+
+          ((httpPort > 0) ? 
+           ("\nHTTP : "+usedHttpPort) :
+           (""))+
+          ((httpPort > 0) ? 
+           ("\nHTTPS: "+usedHttpsPort) :
+           ("")));
     }
-    throw new java.net.BindException(msg);
   }
 
   /**
@@ -489,32 +520,18 @@ implements Component
       (new java.net.ServerSocket(httpsPort)).close();
     }
 
-    // create new HTTP[s] configs with the new ports
-    HttpConfig httpConfig = 
-      ((httpPort > 0) ?
-       ((httpPort != initHttpConfig.getPort()) ? 
-        (new HttpConfig(initHttpConfig, httpPort)) :
-        (initHttpConfig)) :
-       (null));
-    HttpsConfig httpsConfig =
-      ((httpsPort > 0) ?
-       ((httpsPort != initHttpsConfig.getHttpConfig().getPort()) ? 
-        (new HttpsConfig(initHttpsConfig, httpsPort)) :
-        (initHttpsConfig)) :
-       (null));
-
     // ports seem free -- try to launch the full server
     //
     // note that another process might grab the ports,
     // in which case a "javax.net.BindingException" will
     // be thrown.  This is okay so long as the caller can
     // attempt "servEng.start()" again.
-    servEng.configure(httpConfig, httpsConfig, debug);
+    servEng.configure(
+        serverOptions,
+        httpPort, httpOptions, 
+        httpsPort, httpsOptions);
     servEng.start();
 
-    // success; save the config
-    this.usedHttpConfig  = httpConfig;
-    this.usedHttpsConfig = httpsConfig;
   }
 
   /**
@@ -594,17 +611,11 @@ implements Component
       }
 
       public int getHttpPort() {
-        return 
-          ((usedHttpConfig != null) ?
-           (usedHttpConfig.getPort()) : 
-           (-1));
+        return usedHttpPort;
       }
 
       public int getHttpsPort() {
-        return 
-          ((usedHttpsConfig != null) ?
-           (usedHttpsConfig.getHttpConfig().getPort()) : 
-           (-1));
+        return usedHttpsPort;
       }
     }
   }

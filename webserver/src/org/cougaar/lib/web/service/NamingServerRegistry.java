@@ -29,9 +29,6 @@ import javax.naming.directory.*;
 import org.cougaar.lib.web.arch.root.GlobalEntry;
 import org.cougaar.lib.web.arch.root.GlobalRegistry;
 
-import org.cougaar.lib.web.arch.server.HttpConfig;
-import org.cougaar.lib.web.arch.server.HttpsConfig;
-
 /**
  * Implementation of <code>GlobalRegistry</code> that uses
  * a JNDI naming service.
@@ -74,23 +71,6 @@ implements GlobalRegistry {
     if (ctx == null) {
       throw new NullPointerException();
     }
-  }
-
-  public void configure(
-      HttpConfig httpConfig,
-      HttpsConfig httpsConfig) throws IOException {
-    // extract the ports
-    int httpPort = -1;
-    if (httpConfig != null) {
-      httpPort = httpConfig.getPort();
-    }
-    int httpsPort = -1;
-    if (httpsConfig != null) {
-      HttpConfig tmp = httpsConfig.getHttpConfig();
-      httpsPort = tmp.getPort();
-    }
-    // configure
-    configure(httpPort, httpsPort);
   }
 
   public void configure(

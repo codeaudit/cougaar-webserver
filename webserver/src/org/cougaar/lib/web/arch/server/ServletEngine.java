@@ -20,6 +20,8 @@
  */
 package org.cougaar.lib.web.arch.server;
 
+import java.util.Map;
+
 import javax.servlet.Servlet;
 import javax.servlet.ServletException;
 
@@ -43,32 +45,19 @@ public interface ServletEngine {
    * Set the HTTP and HTTPS (SSL) configuration -- this can only 
    * be called when <tt>(isRunning() == false)</tt>.
    *
-   * @param httpC the HTTP configuration, or null if HTTP is disabled
-   * @param httpsC the HTTPS configuration, or null if HTTPs is disabled
-   * @param debug set to "true" to enable verbose debugging output
-   *
-   * @see HttpConfig
-   * @see HttpsConfig
+   * @param serverOptions an option map of server configuration 
+   *    parameters, which are implementation specific.
+   * @param httpPort the HTTP port, or -1 if HTTP is disabled
+   * @param httpsOptions an optional map of HTTP configuration 
+   *    parameters, which are implementation specific.
+   * @param httpsPort the HTTPS port, or -1 if HTTP is disabled
+   * @param httpsOptions an optional map of HTTPS configuration 
+   *    parameters, which are implementation specific.
    */
   public void configure(
-      HttpConfig httpC,
-      HttpsConfig httpsC,
-      boolean debug) throws Exception;
-
-  /**
-   * Get the HTTP config.
-   */
-  public HttpConfig getHttpConfig();
-
-  /**
-   * Get the HTTPS (SSL) config.
-   */
-  public HttpsConfig getHttpsConfig();
-
-  /**
-   * Get the debug-enabled flag.
-   */
-  public boolean getDebug();
+      Map serverOptions,
+      int httpPort, Map httpOptions,
+      int httpsPort, Map httpsOptions) throws Exception;
 
   /**
    * Start the server.
