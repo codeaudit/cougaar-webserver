@@ -178,6 +178,22 @@ To test the login support you should either modify the
 </li><p>
 
 <li>
+To optionally disable the server printing of stack-traces to clients, 
+such as when a servlet throws an exception, modify:
+<pre>
+  webtomcat/data/conf/server.xml
+</pre><br>
+to have:
+<pre> 
+  &lt;ContextManager ... showDebugInfo="false" &gt;
+</pre><br>
+Note that this will make servlet-debugging more difficult, since
+users can no longer cut-&amp;-paste exceptions and report them
+back to the developers.  However, it can be seen as a minor 
+security enhancement, since it hides the code details.
+</li><p>
+
+<li>
 <a name="ini">
 By itself the servlet server will only load the basic "/agents" and
 "/list" servlets that are described in the 
