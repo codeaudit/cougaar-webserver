@@ -21,6 +21,7 @@
 package org.cougaar.lib.web.arch.examples;
 
 import java.io.IOException;
+import java.util.*;
 import javax.servlet.*;
 import javax.servlet.http.*;
 
@@ -61,10 +62,19 @@ public class TestServletEngine {
       return;
     }
 
-    // hard-code for Tomcat
-    String engineClassname = 
-      "org.cougaar.lib.web.tomcat.TomcatServletEngine";
-    Object engineArg = cip+"/webtomcat/data";
+    // from properties
+    int httpPort = 
+      Integer.getInteger("org.cougaar.lib.web.http.port", 8800).intValue();
+    int httpsPort = 
+      Integer.getInteger("org.cougaar.lib.web.https.port", -1).intValue();
+
+    Map serverOptions = Collections.singletonMap("debug", "true");
+    Map httpOptions = Collections.EMPTY_MAP;
+    Map httpsOptions = getHttpsOptions(httpsPort, cip);
+
+    // create the server
+    ServletEngine servEng =
+      createServletEngine(cip);
 
     // create a simple servlet
     Servlet gatewayServlet = 
@@ -82,116 +92,73 @@ public class TestServletEngine {
         }
       };
 
-    // from properties
-    int httpPort = 
-      Integer.getInteger("org.cougaar.lib.web.http.port", 8800).intValue();
-    int httpsPort = 
-      Integer.getInteger("org.cougaar.lib.web.https.port", 8400).intValue();
-    boolean clientAuth;
-
-    String serverKeystore;
-    String serverKeypass;
-    if (httpsPort <= 0) {
-      // HTTPS disabled
-      clientAuth = false;
-      serverKeystore = null;
-      serverKeypass = null;
-    } else {
-      // from properties here, would be from "cougaar.rc"
-      serverKeystore = 
-        System.getProperty("org.cougaar.lib.web.https.keystore");
-      serverKeypass =
-        System.getProperty("org.cougaar.lib.web.https.keypass");
-      clientAuth = 
-        Boolean.getBoolean("org.cougaar.lib.web.https.clientAuth");
-      if ((serverKeystore == null) ||
-          (serverKeypass == null)) {
-        System.err.println(
-            "Must set both \"org.cougaar.lib.web.https.keystore\""+
-            " and \"org.cougaar.lib.web.https.keypass\"");
-        return;
-      }
-      // keystore is relative to the "$org.cougaar.install.path"
-      serverKeystore = cip+"/"+serverKeystore;
-    }
-
-    // run the test
-    test(
-        engineClassname, 
-        engineArg, 
-        httpPort,
-        httpsPort,
-        serverKeystore,
-        serverKeypass,
-        clientAuth,
-        gatewayServlet);
-  }
-
-  public static void test(
-      String engineClassname,
-      Object engineArg,
-      int httpPort,
-      int httpsPort,
-      String serverKeystore,
-      String serverKeypass,
-      boolean clientAuth,
-      Servlet gatewayServlet) throws Exception {
-
-    HttpConfig httpC = 
-      ((httpPort > 0) ?
-       (new HttpConfig(httpPort)) :
-       (null));
-
-    HttpsConfig httpsC =
-      ((httpsPort > 0) ?
-       (new HttpsConfig(
-          new HttpConfig(httpsPort),
-          clientAuth,
-          serverKeystore,
-          serverKeypass,
-          "tomcat",
-          serverKeystore)) :
-       (null));
-
-    test(engineClassname, engineArg, httpC, httpsC, gatewayServlet);
-  }
-
-  public static void test(
-      String engineClassname,
-      Object engineArg,
-      HttpConfig httpC,
-      HttpsConfig httpsC,
-      Servlet gatewayServlet) throws Exception {
-
-    Class cl = Class.forName(engineClassname);
-    java.lang.reflect.Constructor cons = 
-      cl.getConstructor(new Class[]{Object.class});
-    Object o = cons.newInstance(new Object[]{engineArg});
-    ServletEngine servEng = (ServletEngine) o;
-
-    test(servEng, httpC, httpsC, gatewayServlet);
-  }
-
-  public static void test(
-      ServletEngine servEng,
-      HttpConfig httpC,
-      HttpsConfig httpsC,
-      Servlet gatewayServlet) throws Exception {
-
     System.out.println("Servlet Engine: "+servEng);
-    System.out.println("HTTP config: "+httpC);
-    System.out.println("HTTPS config: "+httpsC);
+    System.out.println("Server config: "+serverOptions);
+    System.out.println("HTTP  config: "+httpPort+" "+httpOptions);
+    System.out.println("HTTPS config: "+httpsPort+" " +httpsOptions);
     System.out.println("Gateway Servlet: "+gatewayServlet);
 
     servEng.configure(
-        httpC,
-        httpsC,
-        true); // turn on full debugging with "true"
+        serverOptions,
+        httpPort, httpOptions,
+        httpsPort, httpsOptions);
 
     servEng.setGateway(gatewayServlet);
 
     servEng.start();
 
     System.out.println("Server running");
+    while (true) {
+      try {
+        Thread.sleep(57000);
+      } catch (Exception e) {
+        break;
+      }
+    }
+  }
+
+  private static Map getHttpsOptions(
+      int httpsPort, String cip) {
+    Map httpsOptions;
+    if (httpsPort <= 0) {
+      // HTTPS disabled
+      httpsOptions = Collections.EMPTY_MAP;
+    } else {
+      httpsOptions = new HashMap(13);
+      // from properties here, would be from "cougaar.rc"
+      String keystore =
+        System.getProperty("org.cougaar.lib.web.https.keystore");
+      if (keystore != null) {
+        // keystore is relative to the "$org.cougaar.install.path"
+        keystore = cip+"/"+keystore;
+        httpsOptions.put("keystore", keystore);
+      }
+      String keypass =
+        System.getProperty("org.cougaar.lib.web.https.keypass");
+      if (keypass != null) {
+        httpsOptions.put("keypass", keypass);
+      }
+      String sclientAuth =
+        System.getProperty("org.cougaar.lib.web.https.clientAuth");
+      if (sclientAuth != null) {
+        httpsOptions.put("clientAuth", sclientAuth);
+      }
+    }
+    return httpsOptions;
+  }
+
+  private static ServletEngine createServletEngine(
+      String cip) throws Exception {
+    // hard-code for Tomcat
+    String engineClassname = 
+      "org.cougaar.lib.web.tomcat.TomcatServletEngine";
+    Object engineArg = cip+"/webtomcat/data";
+
+    Class cl = Class.forName(engineClassname);
+    java.lang.reflect.Constructor cons = 
+      cl.getConstructor(new Class[]{Object.class});
+    Object o = cons.newInstance(new Object[]{engineArg});
+    ServletEngine servEng = (ServletEngine) o;
+    return servEng;
   }
 }
