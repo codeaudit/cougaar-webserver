@@ -238,8 +238,8 @@ implements Component
           en.hasMoreElements();
           ) {
         String key = (String) en.nextElement();
-        key = key.substring(PROPERTY_PREFIX.length());
         String value = sysProps.getProperty(key);
+        key = key.substring(PROPERTY_PREFIX.length());
         m.put(key, value);
       }
     }
