@@ -112,9 +112,8 @@ public class TestServletEngine {
             " and \"org.cougaar.lib.web.https.keypass\"");
         return;
       }
-      if (!(serverKeystore.startsWith("/"))) {
-        serverKeystore = cip+"/"+serverKeystore;
-      }
+      // keystore is relative to the "$org.cougaar.install.path"
+      serverKeystore = cip+"/"+serverKeystore;
     }
 
     InetAddress addr = InetAddress.getByName("localhost");
