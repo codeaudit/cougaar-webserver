@@ -22,8 +22,21 @@
 
         <TrustedLoader />
 
-        <!-- Change "ERROR" to "DEBUG" for Tomcat debugging -->
-        <LogSetter name="tc_log" timestamps="true" verbosityLevel="ERROR"/>
+        <!-- 
+            Tomcat logging MUST be disabled!
+
+            LogSetter calls "org.apache.tomcat.util.log.Log"'s
+            "public static void setLogManager(..)" method, which
+            insists that the LogManager can only be set once.
+            This breaks if Cougaar attempts to start Tomcat more
+            than once (e.g. due to port scan to find a free port).
+
+            I'll submit a bug report to the Tomcat team...
+          -->
+         <!--        
+         <LogSetter name="tc_log" timestamps="true" verbosityLevel="FATAL"/> 
+         -->
+
         <LogEvents enabled="false" />
         
         <ContextXmlReader config="conf/server.xml" />
