@@ -15,8 +15,28 @@ and install as usual.
 </li><p>
  
 <li>
-By default the servlet server is enabled.  To disable the server,
-add this Java property:
+By default the servlet server is enabled to run HTTP on port 8800.
+<p>
+For new users it's recommended to:
+<ol>
+  <li>
+  <i>First</i> try the default server configuration with a simple 
+  society (e.g. "minitestconfig").  This will quickly verify 
+  that Cougaar has been installed correctly and that the 
+  basic HTTP support works.
+  </li>
+  <li>
+  <i>Later</i> attempt to (optionally) configure the server for 
+  additional security, HTTPS, client-authentication, etc.
+  </li>
+</ol>
+<p>
+So, for your first test, you should skip ahead to the 
+<a href="#ini">".ini" step</a>.
+</li><p>
+
+<li>
+To disable the server, add this Java property:
 <pre>
     -Dorg.cougaar.core.servlet.enable=false
 </pre>
@@ -24,7 +44,9 @@ add this Java property:
 
 <li>
 There are several other system properties that can be used to
-configure the server.  The defaults are usually fine:
+configure the server.  The defaults are usually fine.
+<p>
+Here are the additional (optional) properties that you can set:
 <pre>
  -Dorg.cougaar.lib.web.scanRange=INT          (defaults to 100)
  -Dorg.cougaar.lib.web.http.port=INT          (defaults to 8800, -1 disables HTTP)
@@ -32,19 +54,11 @@ configure the server.  The defaults are usually fine:
  -Dorg.cougaar.lib.web.https.clientAuth=BOOL  (defaults to false) <a name="clientAuth"/>
 </pre><p>
 <p>
-By default HTTPS is disabled, so you can skip ahead to 
-<a href="#userAuth">this step</a>.  
-<p>
 The "scanRange" sets a limit for the server's search for an open port.
 First the given HTTP/HTTPS ports are tried, then they are both 
 incremented by one, tried again, etc.  If more than "scanRange" ports 
 are already in use then the server throws a BindException and quits.  
 Setting the "scanRange" to 1 will force exact port addresses.
-<p>
-Disabling HTTPS and only using HTTP simplifies this installation and 
-is a good idea when attempting a first-time installation.  Also, the 
-simple single-node four-agent "minitestconfig" society is a good 
-first-time test.
 </li><p>
 
 <li>
@@ -52,18 +66,22 @@ Optional HTTPS support:
 <p>
 <ol>
 <li>
-To enable HTTPS, set the Java property to specify the HTTPS port:<pre>
+To enable HTTPS, set the Java property to specify the HTTPS port:
+<pre>
   -Dorg.cougaar.web.https.port=8400
 </pre>
+Port "8400" is the typical Cougaar HTTPS port.
 </li><p>
 <li>
 Create a keystore to hold the server's private RSA certificate.  There are 
 many 3rd-party utilities that can be used to create a server certificate,
 but here we'll use the Sun "keytool" <a name="keytool"> that is included 
-with the JDK.  Full "keytool" documentation is available at 
+with the JDK.
+<p>
+Here's a link to 
 <a href=
 "http://java.sun.com/products/jdk/1.2/docs/tooldocs/solaris/keytool.html"
->http://java.sun.com/products/jdk/1.2/docs/tooldocs/solaris/keytool.html</a>
+>additional keytool documentation</a>.
 <p>
 The keystore file must be placed in the $COUGAAR_INSTALL_PATH or a 
 subpath -- here we'll name the file 
@@ -93,20 +111,30 @@ Ideally all machines in a multi-host society would have different
 keystores and certificates.  For testing one can create a single
 keystore and copy it amongst the machines, then ignore the
 "hostname doesn't match certificate's hostname" warnings when
-using HTTPS. <a name="lazyKeystore">
+using HTTPS.
 </li><p>
 
 <li>
-Edit the "cougaar.rc" file to add the private keystore filename and 
-password.  The "cougaar.rc" is typically kept as:
-<pre>
-  $COUGAAR_INSTALL_PATH/configs/common/cougaar.rc
-</pre><p>
-The new lines are:
+The keystore filename and password are kept within Cougaar's 
+"org.cougaar.util.Parameters" table under these two names:
+<p>
+<ol>
+  <li>"org.cougaar.web.keystore" for the keystore file name</li>
+  <li>"org.cougaar.web.keypass"  for the password to the keystore</li>
+</ol>
+<p>
+In this example we want the values to be:
 <pre>
   org.cougaar.web.keystore=<a href="#keystore">bin/certs</a>
   org.cougaar.web.keypass=<a href="#password">changeit</a>
+</pre>
+Edit the "cougaar.rc" file to add the above two lines.  The 
+"cougaar.rc" is typically kept as:
+<pre>
+  $COUGAAR_INSTALL_PATH/configs/common/cougaar.rc
 </pre><p>
+See the javadocs for "Parameters" for additional options, such
+as passing these values as "-D" system properties.
 </li><p>
 
 <li>
@@ -121,8 +149,9 @@ keystore file.  This is a Tomcat 3.3 requirement.
 <p>
 Unfortunately <a href="#keytool">Keytool</a> can not be used to create a 
 client certificate.  There are other 3rd-party tools and companies
-that will generate a client certificate.
-<i>TODO: add a link to an open-source client certificate generator</i>.
+that will generate a client certificate and manage the 
+certificate-authority work, such as 
+<a href="http://www.openssl.org">OpenSSL</a>.
 <p>
 With client authentication enabled the server will only accept HTTPS
 requests from trusted clients.  A trusted client is a client that 
@@ -149,7 +178,6 @@ used HTTPS security.
 </li><p>
 
 <li>
-<a name="userAuth">
 Optional username/password authentication:
 <p>
 As an example of username / password authentication, the Tomcat 3.3 
@@ -174,7 +202,7 @@ By default (for testing <b><i>only</i></b>) there is one user:
 To test the login support you should either modify the 
 <a href="#web.xml">"web.xml"</a> and/or define a servlet with a
 <a href="#secure">"*.secure"</a> path within your 
-<a href="#ini">.ini</a> files.
+<a href="#ini">.ini</a> files (e.g. "/tasks.secure").
 </li><p>
 
 <li>
@@ -202,22 +230,33 @@ By itself the servlet server will only load the basic "/agents" and
 >doc/details/Servlet.html</a>
 guide.
 <p>
-User-developed servlets are loaded like plugins.  For this simple test, 
-just add this line to all your agent ".ini" files:
+User-developed servlets are loaded like plugins; they are listed in
+either the agent ".ini" files or in the CSMART database.  Most of the 
+Cougaar sample societies (minitestconfig, small-135, tiny-1ad, etc) 
+have already been modified to load several servlets by default.
+<p>
+For this simple test you should verify that at least one agent's 
+".ini" includes this line:
 <pre>
   plugin = org.cougaar.core.servlet.SimpleServletComponent(org.cougaar.planning.servlet.PlanViewServlet, /tasks)
 </pre><br>
 This will load the "/tasks" servlet, which generates an HTML view of the 
-agent blackboard.  The 
+agent blackboard.
+<p>
+The 
 <a href=
 "../../doc/details/Servlet.html"
 >doc/details/Servlet.html</a>
-guide includes notes on how to develop servlets and links to other
-example servlets.
+guide includes notes on:
+<ul>
+  <li>how to develop servlets</li>
+  <li>a table of Cougaar servlets ("/tasks", etc)</li>
+  <li>additional example servlets</li>
+</ul>
 </li><p>
 
 <li>
-Start the nodes as usual.  You should see this message:
+Start the node(s) as usual.  You should see this message:
 <pre>
   Starting HTTP  server on port: 8800
 </pre>
@@ -248,14 +287,14 @@ option:
   tools-&gt;Internet Options-&gt;Advanced-&gt;Show Friendly HTTP error messages == UNCHECKED
 </pre><br>
 <p>
-This will allow the servlet server to display useful "path-not-found"
+This will allow your browser to display useful "path-not-found"
 and "unknown-agent" error pages.
 </li><p>
 
 <li>
 In a web browser load this page:
 <pre>
-  http://<a name="#hostname">foo.com<a>:8800
+  http://foo.com:8800
 </pre><br>
 to generate the default "welcome" page.  Click on the
 "list local agents" link, then click on any agent's link.
@@ -267,12 +306,12 @@ page.
 To try the HTTPS support, do exactly the same steps as above,
 but start with:
 <pre>
-  https://<a href="#hostname">foo.com</a>:8400
+  https://foo.com:8400
 </pre><br>
 Your browser will be prompted to accept the server's 
-certificate.  You may be <a href="#lazyKeystore">warned</a> if you 
-use "localhost" instead of the full <a href="#hostname">"foo.com"</a> 
-host name.
+certificate.  When using HTTPS, your browser may warn you
+if you used "http://localhost:8400", instead of the certificate
+specifies the full host name ("foo.com").
 </li><p>
 
 </ol>
