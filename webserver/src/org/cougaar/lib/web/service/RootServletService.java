@@ -31,13 +31,12 @@ import javax.servlet.Servlet;
 import org.cougaar.core.component.Service;
 
 /**
- * Root-level ServletService, for use by per-agent "leaf"
- * ServletService components.
+ * This service is the root-level ServletService, for use each
+ * agent's {@link LeafServletServiceComponent} to advertise the
+ * {@link org.cougaar.core.service.ServletService}.
  * <p>
  * The API is identical, but kept separate to allow early-loading
  * components to find the correct intra-agent ServletService.
- *
- * @see org.cougaar.core.service.ServletService 
  */
 public interface RootServletService extends Service {
 

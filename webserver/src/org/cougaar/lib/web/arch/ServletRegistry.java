@@ -31,7 +31,7 @@ import javax.servlet.Servlet;
 import javax.servlet.ServletConfig;
 
 /**
- * 
+ * A table of servlets.
  */
 public interface ServletRegistry {
 

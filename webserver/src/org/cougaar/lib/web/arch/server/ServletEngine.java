@@ -34,13 +34,16 @@ import javax.servlet.ServletException;
 
 /**
  * API for the server that will run the single <code>Servlet</code>
- * for this application.
+ * for this application, for example the
+ * <code>TomcatServletEngine</code>.
  * <p>
  * Note that the user code or the ServletEngine may generate custom
  * error pages.  "Internet Explorer" users should disable the
  * "friendly error pages" option:<pre>
  *    tools-&gt;Internet Options-&gt;Advanced-&gt;Show Friendly HTTP error messages == UNCHECKED
  * </pre>.
+ *
+ * @see #setGateway 
  */
 public interface ServletEngine {
 

@@ -37,11 +37,12 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 /**
- * A "/$name[/.*]" level servlet that<ol>
+ * A "/$name[/.*]" level servlet that:<ol>
  *   <li>generates a help message for "/$name" and "/$name/" 
- *       requests</li>
- *   <li>generates an error message for all other paths</li>
- * </ol>
+ *       requests, and</li>
+ *   <li>generates an error message for all other (unknown)
+ *       paths</li>
+ * </ol>.
  */
 public class UnknownLeafPathServlet 
 implements Servlet {

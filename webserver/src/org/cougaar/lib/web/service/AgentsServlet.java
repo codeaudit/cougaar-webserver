@@ -45,10 +45,11 @@ import org.cougaar.lib.web.arch.ServletRegistry;
 import org.cougaar.lib.web.arch.root.GlobalRegistry;
 
 /**
- * A servlet that handles all "/agents[?args]" requests.
+ * A servlet that handles all "/agents" requests by optionally
+ * displaying locally-registered names or globally-registered names
+ * (in the nameserver).
  * <p>
- * Lists agent names on either the local host or in the global
- * white pages.  The supported URL-parameter arguments are:<ul>
+ * The supported URL-parameter arguments are:<ul>
  *   <li>"?suffix=" -- list the local agent names (default)</li>
  *   <li>"?suffix=<i>text</i>" -- list the agent names in the
  *       global white pages with the matching suffix, where "."

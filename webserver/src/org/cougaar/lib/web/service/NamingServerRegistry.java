@@ -45,10 +45,8 @@ import org.cougaar.util.log.Logger;
 import org.cougaar.util.log.Logging;
 
 /**
- * Implementation of <code>GlobalRegistry</code> that uses
- * a JNDI naming service.
- *
- * @see GlobalRegistry
+ * Implementation of {@link GlobalRegistry} that uses the
+ * {@link WhitePagesService}.
  */
 public class NamingServerRegistry 
 implements GlobalRegistry {

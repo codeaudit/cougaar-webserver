@@ -26,6 +26,8 @@
 package org.cougaar.lib.web.service;
 
 import java.io.File;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.net.BindException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -53,17 +55,19 @@ import org.cougaar.lib.web.arch.root.RootRedirectServlet;
 import org.cougaar.lib.web.arch.root.RootServlet;
 import org.cougaar.lib.web.arch.root.RootServletRegistry;
 import org.cougaar.lib.web.arch.server.ServletEngine;
+import org.cougaar.util.GenericStateModelAdapter;
 import org.cougaar.util.Parameters;
 
 /**
- * A node component that advertises the root-level
- * <code>RootServletService</code>, which is used by the agent-level
- * <code>ServletService</code> providers.
+ * This component loads the {@link ServletEngine} and advertises the
+ * root-level {@link RootServletService}, which is used by the
+ * agent-level {@link LeafServletServiceComponent}s to create the
+ * agent-internal {@link org.cougaar.core.service.ServletService}.
  * <p>
- * For example, node "N" creates the new root-level
- * RootServletService for all agents.  Agent "A" obtains the
- * RootServletService, registers itself as "/$A/", and advertises
- * the agent's internal ServletService.
+ * For example, node "N" creates the new root-level RootServletService
+ * for all agents.  Agent "A" obtains the RootServletService,
+ * registers itself as "/$A/", and advertises the agent's internal
+ * ServletService.
  * <p>
  * For HTTPS the "cougaar.rc" must contain:<pre>
  *   org.cougaar.web.keystore=FILENAME
@@ -136,7 +140,7 @@ import org.cougaar.util.Parameters;
  * @see RootServletService
  */
 public class RootServletServiceComponent 
-extends org.cougaar.util.GenericStateModelAdapter
+extends GenericStateModelAdapter
 implements Component 
 {
   private static final String PROPERTY_PREFIX =
@@ -431,12 +435,12 @@ implements Component
           "Class \""+classname+"\" does not implement \""+
           ServletEngine.class.getName()+"\"");
     }
-    java.lang.reflect.Constructor servCons = 
+    Constructor servCons = 
       servClass.getConstructor(new Class[]{Object.class});
     Object ret;
     try {
       ret = servCons.newInstance(new Object[]{arg});
-    } catch (java.lang.reflect.InvocationTargetException ite) {
+    } catch (InvocationTargetException ite) {
       // extract wrapped Exception
       Throwable t = ite.getTargetException();
       if (t instanceof Exception) {

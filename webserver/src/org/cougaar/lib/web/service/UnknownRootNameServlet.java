@@ -41,9 +41,9 @@ import org.cougaar.lib.web.arch.ServletRegistry;
 
 /**
  * A servlet that displays an error message when an unknown
- * root name ("/$[~]name") is requested.
+ * name ("/$[~]name") is requested.
  * <p>
- * This is somewhat similar to the <code>ListRegistryServlet</code>.
+ * This is somewhat similar to the {@link ListRegistryServlet}.
  */
 public class UnknownRootNameServlet 
 implements Servlet {

@@ -26,6 +26,7 @@
 package org.cougaar.lib.web.arch.examples;
 
 import java.io.IOException;
+import java.lang.reflect.Constructor;
 import java.util.*;
 import javax.servlet.*;
 import javax.servlet.http.*;
@@ -33,7 +34,7 @@ import javax.servlet.http.*;
 import org.cougaar.lib.web.arch.server.*;
 
 /**
- * Utility to test <code>ServletEngine</code>.
+ * A utility class to test the <code>ServletEngine</code>.
  * <p>
  * When running all requests will display a "HELLO WORLD!" 
  * HTML page.
@@ -160,7 +161,7 @@ public class TestServletEngine {
     Object engineArg = cip+"/webtomcat/data";
 
     Class cl = Class.forName(engineClassname);
-    java.lang.reflect.Constructor cons = 
+    Constructor cons = 
       cl.getConstructor(new Class[]{Object.class});
     Object o = cons.newInstance(new Object[]{engineArg});
     ServletEngine servEng = (ServletEngine) o;

@@ -34,7 +34,7 @@ import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 
 /**
- * Simple wrapper for Servlets that implement
+ * An internal wrapper for Servlets that implement
  * <code>SingleThreadModel</code> -- <b>note</b> that
  * if a Servlet is registered under multiple names then
  * this will only synchronize per <i>name</i>.

@@ -38,28 +38,39 @@ import org.cougaar.lib.web.arch.ServletRegistry;
 import org.cougaar.lib.web.arch.util.PrefixMatch;
 
 /**
- * This is a <code>Servlet</code> that uses a 
- * <code>ServletRegistry</code> to delegate Servlet requests.
+ * This <code>Servlet</code> handles all incoming requests,
+ * typically by delegating "/$name" requests to the local {@link
+ * org.cougaar.lib.web.arch.leaf.LeafServlet}s or by redirecting
+ * the client if the named agent is remote.
  * <p>
- * There are four request cases:
+ * The following rules are used to handle requests:
  * <ol>
- *   <li>If the request-path is "/" then the
- *       <code>welcomeServlet</code> is used.</li>
- *   <li>If the name in "/$[~]name[/.*]" is not locally registered
- *       then the <code>redirectServlet</code> is used.</li>
- *   <li>If the request is "/$~[name[/.*]]" then the request is
- *       handled as if it was "/$<i>rootName</i>[/.*]"</li>
- *   <li>If the name is locally registered then the request is
- *       delegated to the registered Servlet.</li>
+ *   <li>If the request path is "/" then the
+ *       <code>welcomeServlet</code> is used to print a friendly
+ *       welcome page.</li>
+ *   <li>If the path is "/agent" then the <code>agentsServlet</code>
+ *       is used.</li>
+ *   <li>If the name lacks a "/$" prefix, or is "/$/", or is "/$~/",
+ *       then the request is handled as if the prefix is
+ *       "/$<i>rootName</i>", and the following rules are invoked.
+ *       </li>
+ *   <li>If the "/$name[/.*]" name is locally registered then the
+ *       request is delegated to the registered LeafServlet.  The
+ *       LeafServlet in turn invokes the registered path within that
+ *       name, or complains if the path does not exist.  This is the
+ *       most common case.</li>
+ *   <li>If the "/$name[/.*]" name is not locally registered then the
+ *       <code>redirectServlet</code> is used to redirect the client
+ *       to the appropriate remote host, based on a nameserver
+ *       lookup.</li>
+ *   <li>If the prefix is "/$~name[/.*]" and the name is locally
+ *       registered then the request is passed to the
+ *       "/$<i>rootName</i>" -- the "~" is interpreted as
+ *       "the home of <i>name</i>".</li>
+ *   <li>If the prefix is "/$~name[/.*]" and the name is not locally
+ *       registered then the <code>redirectServlet</code> is used as
+ *       noted above.<li>
  * </ol>
- * <p>
- * The most common case is "/$name/<i>path</i>", such as "/$X/test",
- * which would invoke X's "/test" servlet.
- * <p>
- * The "/$~" prefix is used to access the local "root" for a name.
- * For example, if the rootName is "R" and the path is "/$~X/test",
- * then this would invoke R's "/test" servlet.  An equivalent path
- * is "/$~/test".
  */
 public class RootServlet 
 implements Servlet {

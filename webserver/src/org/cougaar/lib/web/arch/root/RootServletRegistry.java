@@ -39,7 +39,9 @@ import org.cougaar.lib.web.arch.ServletRegistry;
 import org.cougaar.lib.web.arch.util.SynchronizedServlet;
 
 /**
- * FIXME.
+ * The {@link ServletRegistry} implementation for the {@link
+ * RootServlet}, which contains the local names and binds/unbinds
+ * these names in the {@link GlobalRegistry}.
  */
 public class RootServletRegistry 
 implements ServletRegistry {

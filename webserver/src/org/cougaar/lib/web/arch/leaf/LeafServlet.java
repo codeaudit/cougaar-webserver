@@ -39,8 +39,8 @@ import org.cougaar.lib.web.arch.ServletRegistry;
 import org.cougaar.lib.web.arch.util.PrefixMatch;
 
 /**
- * This is a <code>Servlet</code> that uses a 
- * <code>ServletRegistry</code> to delegate Servlet requests.
+ * This <code>Servlet</code> forwards service requests to the locally
+ * registered ("leaf") servlets, typically intra-agent servlets.
  * <p>
  * If the request-path is not registered then the provided
  * "unknownPathServlet" is used.

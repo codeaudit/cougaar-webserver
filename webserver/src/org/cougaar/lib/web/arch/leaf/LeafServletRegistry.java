@@ -38,7 +38,7 @@ import org.cougaar.lib.web.arch.util.PrefixTableImpl;
 import org.cougaar.lib.web.arch.util.SynchronizedServlet;
 
 /**
- * Registry for leaf paths.
+ * A registry for leaf servlet paths.
  */
 public class LeafServletRegistry 
 implements ServletRegistry {

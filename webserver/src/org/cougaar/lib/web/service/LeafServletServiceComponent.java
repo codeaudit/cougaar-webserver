@@ -44,19 +44,18 @@ import org.cougaar.lib.web.arch.ServletRegistry;
 import org.cougaar.lib.web.arch.leaf.LeafServlet;
 import org.cougaar.lib.web.arch.leaf.LeafServletRegistry;
 import org.cougaar.lib.web.arch.leaf.LeafToRootRedirectServlet;
+import org.cougaar.util.GenericStateModelAdapter;
 
 /**
- * An agent component that advertises the agent-internal
- * <code>ServletService</code>, based upon the node's
- * <code>RootServletService</code>.
+ * This component advertises the agent-internal {@link
+ * ServletService}, based upon the node-level {@link
+ * RootServletService}.
  * <p>
  * This component also blocks the RootServletService, since
  * agent components should use the ServletService.
- *
- * @see ServletService
  */
 public class LeafServletServiceComponent 
-extends org.cougaar.util.GenericStateModelAdapter
+extends GenericStateModelAdapter
 implements Component 
 {
   private ServiceBroker sb;

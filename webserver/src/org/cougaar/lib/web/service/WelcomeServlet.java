@@ -42,8 +42,8 @@ import org.cougaar.lib.web.arch.ServletRegistry;
 import org.cougaar.lib.web.arch.root.GlobalRegistry;
 
 /**
- * A servlet that generates an html welcome page in response
- * to a "/" path.
+ * A servlet that generates a top-level HTML welcome page in response
+ * to the "/" path.
  */
 public class WelcomeServlet 
 implements Servlet {

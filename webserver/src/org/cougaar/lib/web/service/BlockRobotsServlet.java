@@ -43,10 +43,10 @@ import org.cougaar.lib.web.arch.root.GlobalRegistry;
 
 /**
  * An optional servlet that handles "/robots.txt" requests with a
- * hard-coded disallow response:<pre>
+ * hard-coded disallow response:<tt><pre>
  *   User-agent: *
  *   Disallow: /
- * </pre>to keep out web-crawlers, such as Google.
+ * </pre></tt>to keep out web-crawlers, such as Google.
  */
 public class BlockRobotsServlet 
 implements Servlet {
