@@ -29,6 +29,7 @@ import java.util.Collections;
 import java.util.Map;
 import javax.servlet.*;
 import javax.servlet.http.*;
+import javax.servlet.jsp.JspFactory;
  
 // will implement "ServletEngine":
 import org.cougaar.lib.web.arch.server.*;
@@ -70,6 +71,9 @@ public class TomcatServletEngine
     "conf"+SEP+"modules.xml",
     "webapps"+SEP+"ROOT"+SEP+"WEB-INF"+SEP+"web.xml",
   };
+
+  private static final String JSP_FACTORY =
+    "org.apache.jasper.runtime.JspFactoryImpl";
 
   private final String installPath;
 
@@ -221,8 +225,6 @@ public class TomcatServletEngine
       }
 
       et.embeddedStart();
-
-      this.isRunning = true;
     } catch (LifecycleException te) {
       Throwable teCause = te.getThrowable();
       if (teCause instanceof BindException) {
@@ -241,6 +243,23 @@ public class TomcatServletEngine
       throw new RuntimeException(
           "Unknown Tomcat exception: ", e);
     }
+
+    if (JspFactory.getDefaultFactory() == null) {
+      try {
+        Class jspFC = Class.forName(JSP_FACTORY);
+        JspFactory jspF = (JspFactory) jspFC.newInstance();
+        JspFactory.setDefaultFactory(jspF);
+      } catch (Exception e) {
+        // no "jasper-runtime", so no JSP support!
+        //
+        // we don't need to log this; if a JSP is constructed,
+        // it'll throw an appropriate exception:
+        //   java.lang.NoClassDefFoundError:
+        //     org/apache/jasper/runtime/HttpJspBase
+      }
+    }
+
+    this.isRunning = true;
   }
 
   public void setGateway(Servlet servlet) throws ServletException {
