@@ -20,8 +20,8 @@
         <servlet-class>org.cougaar.lib.web.tomcat.HookServlet</servlet-class>
     </servlet>
 
-<!-- unnecessary
     <!-- specify an error page for custom error messages -->
+<!-- unnecessary
     <servlet>
         <servlet-name>err404</servlet-name>
         <servlet-class>org.cougaar.lib.web.tomcat.ErrorServlet</servlet-class>
