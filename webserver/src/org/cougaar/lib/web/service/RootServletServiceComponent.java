@@ -46,6 +46,15 @@ import org.cougaar.util.Parameters;
  * For example, Node "N" can create a new root-level ServletService 
  * its children.  When a child, such as Agent "A", requests
  * ServletService it will be able to register itself as "/$A/".
+ * <p>
+ * For HTTPS the "cougaar.rc" must contain:<pre>
+ *   org.cougaar.web.keystore=FILENAME
+ *   org.cougaar.web.keypass=Password
+ * </pre>
+ * where the FILENAME is relative to the "$cougaar.install.path".
+ * See <code>org.cougaar.util.Parameters</code> for "cougaar.rc" 
+ * documentation.
+ * <p>
  * 
  * <pre>
  * @property org.cougaar.lib.web.scanRange
@@ -130,6 +139,10 @@ implements Component
       Boolean.getBoolean(
           "org.cougaar.lib.web.https.clientAuth");
 
+    // paths are relative to the "$org.cougaar.install.path"
+    String cip =
+      System.getProperty("org.cougaar.install.path");
+
     // config data from the "cougaar.rc", for security reasons
     //
     // private keystore/keypass for HTTPS
@@ -148,13 +161,15 @@ implements Component
             " \"org.cougaar.web.keystore=..\" and"+
             " \"org.cougaar.web.keypass=..\" entries");
       }
+      // keystore is relative to "$org.cougaar.install.path"
+      serverKeystore = cip+"/"+serverKeystore;
     }
 
     // hard-code the servlet engine implementation
     this.serverClassname = 
       "org.cougaar.lib.web.tomcat.TomcatServletEngine";
     this.serverArg = 
-      "webtomcat/data";
+      cip+"/webtomcat/data";
     String serverKeyname = "tomcat";
     String trustKeystore = serverKeystore;
     InetAddress localAddr;
@@ -182,17 +197,6 @@ implements Component
           "HTTP port ("+httpPort+
           ") and HTTPS port ("+httpsPort+
           ") must be different!");
-    }
-
-    // prepend keystore paths with install-path
-    String cip = System.getProperty("org.cougaar.install.path");
-    if ((serverKeystore != null) &&
-        (!(serverKeystore.startsWith("/")))) {
-      serverKeystore = cip+"/"+serverKeystore;
-    }
-    if ((trustKeystore != null) &&
-        (!(trustKeystore.startsWith("/")))) {
-      trustKeystore = cip+"/"+trustKeystore;
     }
 
     // create the HTTP  config
