@@ -58,7 +58,6 @@ import org.apache.catalina.valves.ValveBase;
  * standard methods available for authentication in servlet 2.3 spec.
  * Remember that the primary authentication is always CERT, so don't use that.
  *
- * @author George Mount <gmount@nai.com>
  *
  * @property org.cougaar.lib.web.tomcat.auth.class
  *   classname for authenticator.

@@ -47,7 +47,6 @@ import org.apache.catalina.Realm;
  *   &lt;Realm className="org.cougaar.lib.web.tomcat.SecureRealm" /&gt;
  * </pre>
  *
- * @author George Mount <gmount@nai.com>
  *
  * @property org.cougaar.lib.web.tomcat.realm.class
  *   classname for realm.
