@@ -21,13 +21,15 @@
 package org.cougaar.lib.web.arch.root;
 
 import java.io.IOException;
-import java.util.*;
-
-import javax.servlet.*;
-import javax.servlet.http.*;
-
+import javax.servlet.Servlet;
+import javax.servlet.ServletConfig;
+import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
+import javax.servlet.http.HttpServletRequest;
 import org.cougaar.lib.web.arch.ServletRegistry;
-import org.cougaar.lib.web.arch.DummyServletConfig;
+import org.cougaar.lib.web.arch.util.DummyServletConfig;
+import org.cougaar.lib.web.arch.util.PrefixMatch;
 
 /**
  * This is a <code>Servlet</code> that uses a 
@@ -164,7 +166,16 @@ implements Servlet {
     }
 
     // find the matching servlet
-    Servlet s = servletReg.get(name);
+    Object o = servletReg.get(name);
+    Servlet s;
+    if (o == null) {
+      s = null;
+    } else if (o instanceof Servlet) {
+      s = (Servlet) o;
+    } else {
+      // unexpected!
+      s = (Servlet) ((PrefixMatch) o).getValue();
+    }
 
     // no such name
     if (s == null) {

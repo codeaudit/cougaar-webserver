@@ -24,20 +24,19 @@ import java.io.File;
 import java.net.InetAddress;
 import java.util.Collections;
 import java.util.Map;
-
-import org.apache.catalina.startup.Catalina;
-import org.apache.catalina.LifecycleException;
-import org.apache.catalina.Lifecycle;
-import org.apache.catalina.Server;
-import org.apache.catalina.Service;
 import org.apache.catalina.Connector;
 import org.apache.catalina.Container;
 import org.apache.catalina.Context;
-import org.apache.catalina.connector.http.HttpConnector;
 import org.apache.catalina.Engine;
+import org.apache.catalina.LifecycleException;
+import org.apache.catalina.Lifecycle;
 import org.apache.catalina.Loader;
-import org.apache.catalina.net.SSLServerSocketFactory;
+import org.apache.catalina.Server;
+import org.apache.catalina.Service;
+import org.apache.catalina.connector.http.HttpConnector;
 import org.apache.catalina.net.ServerSocketFactory;
+import org.apache.catalina.net.SSLServerSocketFactory;
+import org.apache.catalina.startup.Catalina;
 import org.apache.catalina.util.xml.XmlMapper;
 
 /**
@@ -168,10 +167,12 @@ public class EmbeddedTomcat extends Catalina {
       int port,
       Map options) {
     String factoryClassname = null;
+    int acceptCount = 10;
 
     if (options != null) {
-      factoryClassname = (String) 
-        options.get("factory");
+      factoryClassname = (String) options.get("factory");
+      String ac = (String) options.get("acceptCount");
+      if (ac != null) acceptCount = Integer.parseInt(ac);
       // check for unknown option names?
 
       /*
@@ -179,7 +180,6 @@ public class EmbeddedTomcat extends Catalina {
       minProcessors="5"
       maxProcessors="75"
       enableLookups="true"
-      acceptCount="10"
       debug="0"
       connectionTimeout="60000"
       */
@@ -196,16 +196,19 @@ public class EmbeddedTomcat extends Catalina {
       }
     }
 
-    addEndpoint(port, null, fact);
+    addEndpoint(port, null, fact, acceptCount);
   }
 
   /**
    * Adds an HTTP socket connector to the server.
    */
   public void addEndpoint(
-      int port, InetAddress address,
-      ServerSocketFactory fact) {
+      int port,
+      InetAddress address,
+      ServerSocketFactory fact,
+      int acceptCount) {
     HttpConnector ctr = new HttpConnector();
+    if (acceptCount >= 0) ctr.setAcceptCount(acceptCount);
     if (fact != null) ctr.setFactory(fact);
     if (address != null) ctr.setAddress(address.getHostAddress());
     ctr.setPort(port);

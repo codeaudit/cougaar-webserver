@@ -25,7 +25,8 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.BindException;
 import java.net.URL;
-import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import javax.servlet.*;
 import javax.servlet.http.*;
@@ -147,29 +148,37 @@ public class TomcatServletEngine
   }
 
   public void configure(
-      Map serverOptions,
-      int httpPort, Map httpOptions,
-      int httpsPort, Map httpsOptions) {
+      int httpPort,
+      int httpsPort,
+      Map options) {
     if (isRunning()) {
       throw new IllegalStateException(
           "Unable to configure a running Tomcat");
     }
 
-    if (serverOptions == null) {
-      serverOptions = Collections.EMPTY_MAP;
-    }
-    if (httpOptions == null) {
-      httpOptions = Collections.EMPTY_MAP;
-    }
-    if (httpsOptions == null) {
-      httpsOptions = Collections.EMPTY_MAP;
-    }
-
-    this.serverOptions = serverOptions;
     this.httpPort = httpPort;
-    this.httpOptions = httpOptions;
     this.httpsPort = httpsPort;
-    this.httpsOptions = httpsOptions;
+
+    // extract the server options
+    serverOptions = new HashMap(7);
+    httpOptions = new HashMap(7);
+    httpsOptions = new HashMap(7);
+    for (Iterator iter = options.entrySet().iterator();
+        iter.hasNext();
+        ) {
+      Map.Entry me = (Map.Entry) iter.next();
+      String key = (String) me.getKey();
+      String value = (String) me.getValue();
+      if (key.indexOf(".") < 0) {
+        serverOptions.put(key, value);
+      } else if (key.startsWith("http.")) {
+        httpOptions.put(key.substring(5), value);
+      } else if (key.startsWith("https.")) {
+        httpsOptions.put(key.substring(6), value);
+      } else {
+        // ignore?
+      }
+    }
   }
 
   public boolean isRunning() {

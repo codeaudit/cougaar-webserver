@@ -20,12 +20,20 @@
  */
 package org.cougaar.lib.web.service;
 
-import java.io.*;
-import java.net.*;
-import java.util.*;
-
-import org.cougaar.core.service.wp.*;
-
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.InetAddress;
+import java.net.URI;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Set;
+import org.cougaar.core.service.wp.AddressEntry;
+import org.cougaar.core.service.wp.Application;
+import org.cougaar.core.service.wp.Cert;
+import org.cougaar.core.service.wp.WhitePagesService;
 import org.cougaar.lib.web.arch.root.GlobalRegistry;
 
 /**

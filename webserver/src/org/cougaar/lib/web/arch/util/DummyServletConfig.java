@@ -18,13 +18,18 @@
  *  PERFORMANCE OF THE COUGAAR SOFTWARE.
  * </copyright>
  */
-package org.cougaar.lib.web.arch;
+package org.cougaar.lib.web.arch.util;
 
 import java.io.InputStream;
 import java.net.URL;
+import java.util.Collections;
 import java.util.Enumeration;
-
-import javax.servlet.*;
+import java.util.NoSuchElementException;
+import java.util.Set;
+import javax.servlet.RequestDispatcher;
+import javax.servlet.Servlet;
+import javax.servlet.ServletConfig;
+import javax.servlet.ServletContext;
 
 /**
  * Dummy <code>ServletConfig</code> used in "Servlet.init(..)".

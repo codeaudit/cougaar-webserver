@@ -22,7 +22,6 @@ package org.cougaar.lib.web.arch.root;
 
 import java.io.IOException;
 import java.net.URI;
-import java.util.List;
 import java.util.Set;
 
 /**
@@ -77,7 +76,7 @@ public interface GlobalRegistry {
   /**
    * Find the entry that matches the globally-unique name.
    * 
-   * @return the matching GlobalEntry, or null if none matches
+   * @return the matching URI, or null if none matches
    *
    * @throws IOException if some low-level IO error has occurred
    */

@@ -20,21 +20,37 @@
  */
 package org.cougaar.lib.web.service;
 
-import java.io.IOException;
-import java.util.*;
-
+import java.io.File;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.net.BindException;
+import java.net.ServerSocket;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
 import javax.servlet.Servlet;
-
-import org.cougaar.core.component.*;
+import org.cougaar.bootstrap.SystemProperties;
+import org.cougaar.core.component.BindingSite;
+import org.cougaar.core.component.Component;
+import org.cougaar.core.component.ServiceBroker;
+import org.cougaar.core.component.ServiceProvider;
+import org.cougaar.core.component.ServiceRevokedListener;
+import org.cougaar.core.node.NodeControlService;
 import org.cougaar.core.service.LoggingService;
 import org.cougaar.core.service.ServletService;
-import org.cougaar.core.service.wp.*;
-import org.cougaar.core.node.NodeControlService;
-
+import org.cougaar.core.service.wp.WhitePagesService;
 import org.cougaar.lib.web.arch.ServletRegistry;
-import org.cougaar.lib.web.arch.root.*;
-import org.cougaar.lib.web.arch.server.*;
-
+import org.cougaar.lib.web.arch.root.GlobalRegistry;
+import org.cougaar.lib.web.arch.root.RootRedirectServlet;
+import org.cougaar.lib.web.arch.root.RootServlet;
+import org.cougaar.lib.web.arch.root.RootServletRegistry;
+import org.cougaar.lib.web.arch.server.ServletEngine;
+import org.cougaar.util.GenericStateModelAdapter;
 import org.cougaar.util.Parameters;
 
 /**
@@ -56,6 +72,12 @@ import org.cougaar.util.Parameters;
  * <p>
  * 
  * <pre>
+ * @property org.cougaar.lib.web.server.classname
+ *   Classname for ServletEngine.  Defaults to Tomcat.
+ *
+ * @property org.cougaar.lib.web.server.arg
+ *   Argument for ServletEngine.  Defaults to Tomcat path.
+ *
  * @property org.cougaar.lib.web.scanRange
  *   The scan range for ports beyond the configured base HTTP
  *   and HTTPS ports.  If either port is in use the ports will 
@@ -75,11 +97,17 @@ import org.cougaar.util.Parameters;
  *   Optional classname for factory used to create HTTP server
  *   sockets.  Defaults to a standard socket factory.
  *
+ * @property org.cougaar.lib.web.http.acceptCount
+ *   HTTP ServerSocket backlog.  Defaults to a server default.
+ *
  * @property org.cougaar.lib.web.https.port
  *   The base integer port for the HTTPS server, which defaults to
  *   -1.  The most common value is 8400.  If a negative number is 
  *   passed then HTTPS listening is disabled.  Also see the 
  *   "org.cougaar.lib.web.scanRange" property.
+ *
+ * @property org.cougaar.lib.web.https.acceptCount
+ *   HTTPS ServerSocket backlog.  Defaults to a server default.
  *
  * @property org.cougaar.lib.web.https.clientAuth
  *   Used to enable HTTPS client-authentication.  Defaults to
@@ -88,6 +116,14 @@ import org.cougaar.util.Parameters;
  * @property org.cougaar.lib.web.https.factory
  *   Optional classname for factory used to create HTTPS (SSL) 
  *   server sockets.  Defaults to a standard SSL socket factory.
+ *
+ * @property org.cougaar.lib.web.https.keystore
+ *   Optional HTTPS keystore.  Prefer "cougaar.rc" entry
+ *   for "org.cougaar.web.keystore=FILENAME".
+ *
+ * @property org.cougaar.lib.web.https.keypass
+ *   Optional HTTPS keystore.  Prefer "cougaar.rc" entry
+ *   for "org.cougaar.web.keypass=PASSWORD".
  * </pre>
  *
  * @see ServletService
@@ -96,6 +132,9 @@ public class RootServletServiceComponent
 extends org.cougaar.util.GenericStateModelAdapter
 implements Component 
 {
+  private static final String PROPERTY_PREFIX =
+    "org.cougaar.lib.web.";
+
   private LoggingService log;
 
   // used to create the "rootReg"
@@ -104,15 +143,14 @@ implements Component
   private ServiceBroker sb;
 
   // from initialize
+  private List initList;
   private String serverClassname;
   private Object serverArg;
   private int scanRange;
 
-  private Map serverOptions;
+  private Map config;
   private int initHttpPort;
   private int initHttpsPort;
-  private Map httpOptions;
-  private Map httpsOptions;
 
   private GlobalRegistry globReg;
   private ServiceProvider rootSP;
@@ -134,116 +172,108 @@ implements Component
   }
 
   public void setParameter(Object o) {
-    throw new UnsupportedOperationException(
-        "Root servlet-service not expecting a parameter: "+
-        ((o != null) ? o.getClass().getName() : "null"));
+    if (o instanceof List) {
+      this.initList = (List) o;
+    } else if (o != null) {
+      throw new IllegalArgumentException(
+          "Invalid non-List parameter: "+
+          o.getClass().getName());
+    }
   }
 
   private void configureParameters() {
-    // this occurs after "load()" to allow logging
 
-    // all paths are relative to the "$org.cougaar.install.path"
+    // Map<String, String>
+    Map m = new HashMap(13);
+
     String cip =
-      System.getProperty("org.cougaar.install.path");
+      System.getProperty("org.cougaar.install.path", ".");
 
-    // set the server parameters
-    this.scanRange = 
-      Integer.getInteger(
-          "org.cougaar.lib.web.scanRange",
-          100).intValue();
+    // set defaults
+    m.put("debug", Boolean.toString(log.isDebugEnabled()));
+    m.put("scanRange", "100");
+    m.put(
+        "server.classname", 
+        "org.cougaar.lib.web.tomcat.TomcatServletEngine");
+    m.put(
+        "server.arg",
+        cip+File.separator+"webtomcat"+File.separator+"data");
+    m.put("https.keyname", "tomcat");
+    m.put("http.port", "8800");
+    m.put("https.port", "-1");
 
-    if (scanRange < 1) {
-      throw new IllegalArgumentException(
-          "Port scan range must be at least 1, not \""+
-          scanRange+"\"");
+    // override with init parameters
+    if (initList != null) {
+      for (Iterator iter = initList.iterator();
+          iter.hasNext();
+          ) {
+        String s = (String) iter.next();
+        if (s != null) {
+          int sep = s.indexOf('=');
+          String key;
+          String value;
+          if (sep >= 0) {
+            key = s.substring(0, sep);
+            value = s.substring(sep+1);
+          } else {
+            key = s;
+            value = null;
+          }
+          m.put(key, value);
+        }
+      }
+      this.initList = null;
     }
 
-    // hard-code the servlet engine implementation
-    this.serverClassname = 
-      "org.cougaar.lib.web.tomcat.TomcatServletEngine";
-    this.serverArg = 
-      cip+"/webtomcat/data";
+    // override with system properties
+    Properties sysProps = 
+      SystemProperties.getSystemPropertiesWithPrefix(
+          PROPERTY_PREFIX);
+    if (sysProps != null) {
+      for (Enumeration en = sysProps.propertyNames();
+          en.hasMoreElements();
+          ) {
+        String key = (String) en.nextElement();
+        key = key.substring(PROPERTY_PREFIX.length());
+        String value = sysProps.getProperty(key);
+        m.put(key, value);
+      }
+    }
+    
+    // override with "cougaar.rc"
+    String serverKeystore = 
+      Parameters.findParameter("org.cougaar.web.keystore");
+    if (serverKeystore != null) {
+      // keystore is relative to "$org.cougaar.install.path"
+      serverKeystore = cip+File.separator+serverKeystore;
+      m.put("https.keystore", serverKeystore);
+    }
+    String serverKeypass = 
+      Parameters.findParameter("org.cougaar.web.keypass");
+    if (serverKeypass != null) {
+      m.put("https.keypass", serverKeypass);
+    }
 
-    // set the http and https ports
+    if (!m.containsKey("https.trustKeystore")) {
+      // default trustKeystore is the keystore
+      m.put("https.trustKeystore", serverKeystore);
+    }
+
+    // extract our parameters
+    this.serverClassname = (String) m.get("server.classname");
+    this.serverArg = (String) m.get("server.arg");
+    this.scanRange = Integer.parseInt((String) m.get("scanRange"));
     this.initHttpPort = 
-      Integer.getInteger(
-          "org.cougaar.lib.web.http.port",
-          8800).intValue();
+      Integer.parseInt((String) m.get("http.port"));
     this.initHttpsPort = 
-      Integer.getInteger(
-          "org.cougaar.lib.web.https.port",
-          (-1)).intValue();
-    if ((initHttpPort  > 0) &&
-        (initHttpsPort > 0) &&
-        (initHttpPort == initHttpsPort)) {
-      throw new IllegalArgumentException(
-          "HTTP port ("+initHttpPort+
-          ") and HTTPS port ("+initHttpsPort+
-          ") must be different!");
+      Integer.parseInt((String) m.get("https.port"));
+
+    if (log.isDebugEnabled()) {
+      log.debug("Config: "+m);
     }
 
-    // for now these protocol options are fixed.
-    //
-    // in the future this may be expanded to support
-    // new options, such as socket timeouts, etc.
-
-    // use our logging level to set the server's logging level
-    serverOptions = 
-      Collections.singletonMap(
-          "debug", 
-          Boolean.toString(log.isDebugEnabled()));
-
-    httpOptions = Collections.EMPTY_MAP;
-    if (initHttpPort > 0) {
-      String httpFactory =
-        System.getProperty(
-            "org.cougaar.lib.web.http.factory");
-      if (httpFactory != null) {
-        httpOptions = 
-          Collections.singletonMap("factory", httpFactory);
-      }
-    }
-
-    if (initHttpsPort > 0) {
-      this.httpsOptions = new HashMap(13);
-      String httpsFactory =
-        System.getProperty(
-            "org.cougaar.lib.web.https.factory");
-      if (httpsFactory != null) {
-        httpsOptions.put("factory", httpsFactory);
-      }
-
-      String clientAuth = 
-        System.getProperty(
-            "org.cougaar.lib.web.https.clientAuth");
-      if (clientAuth != null) {
-        httpsOptions.put("clientAuth", clientAuth);
-      }
-
-      // config data from the "cougaar.rc", for security reasons
-      String serverKeystore = 
-        Parameters.findParameter("org.cougaar.web.keystore");
-      if (serverKeystore != null) {
-        // keystore is relative to "$org.cougaar.install.path"
-        serverKeystore = cip+"/"+serverKeystore;
-        httpsOptions.put("keystore", serverKeystore);
-      }
-
-      String serverKeypass  = 
-        Parameters.findParameter("org.cougaar.web.keypass");
-      if (serverKeypass != null) {
-        httpsOptions.put("keypass", serverKeypass);
-      }
-
-      // these are hard-coded
-      httpsOptions.put("keyname", "tomcat");
-      if (serverKeystore != null) {
-        httpsOptions.put("trustKeystore", serverKeystore);
-      }
-    } else {
-      httpsOptions = Collections.EMPTY_MAP;
-    }
-
+    // save the server options
+    config = Collections.unmodifiableMap(m);
   }
 
   public void load() {
@@ -256,17 +286,6 @@ implements Component
     }
 
     configureParameters();
-
-    if (log.isDebugEnabled()) {
-      log.debug(
-          "Server options: "+serverOptions);
-      log.debug(
-          "HTTP port: "+initHttpPort+
-          " Options: "+httpOptions);
-      log.debug(
-          "HTTPS port: "+initHttpsPort+
-          " Options: "+httpsOptions);
-    }
 
     // create the global registry
     try {
@@ -370,6 +389,10 @@ implements Component
   private static ServletEngine createServer(
       String classname,
       Object arg) throws Exception {
+    if (classname == null) {
+      throw new IllegalArgumentException(
+          "Server classname not specified");
+    }
     // basic reflection code:
     Class servClass = Class.forName(classname);
     if (!(ServletEngine.class.isAssignableFrom(servClass))) {
@@ -423,6 +446,21 @@ implements Component
    * See the "@property" javadocs at the top of this file.
    */
   private void startServer() throws Exception {
+
+    // validate our parameters
+    if (scanRange < 1) {
+      throw new IllegalArgumentException(
+          "Port scan range must be at least 1, not \""+
+          scanRange+"\"");
+    }
+    if ((initHttpPort  > 0) &&
+        (initHttpsPort > 0) &&
+        (initHttpPort == initHttpsPort)) {
+      throw new IllegalArgumentException(
+          "HTTP port ("+initHttpPort+
+          ") and HTTPS port ("+initHttpsPort+
+          ") must be different!");
+    }
 
     // set the scan range
     int maxI = scanRange;
@@ -522,9 +560,9 @@ implements Component
     // be thrown.  This is okay so long as the caller can
     // attempt "servEng.start()" again.
     servEng.configure(
-        serverOptions,
-        httpPort, httpOptions, 
-        httpsPort, httpsOptions);
+        httpPort,
+        httpsPort,
+        config);
     servEng.start();
 
   }

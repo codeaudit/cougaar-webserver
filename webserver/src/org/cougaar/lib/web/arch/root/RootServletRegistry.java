@@ -20,13 +20,19 @@
  */
 package org.cougaar.lib.web.arch.root;
 
-import java.io.IOException;
-import java.util.*;
-
-import javax.servlet.*;
-
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import javax.servlet.Servlet;
+import javax.servlet.ServletConfig;
+import javax.servlet.ServletException;
+import javax.servlet.SingleThreadModel;
 import org.cougaar.lib.web.arch.ServletRegistry;
-import org.cougaar.lib.web.arch.leaf.LeafServletRegistry;
+import org.cougaar.lib.web.arch.util.DummyServletConfig;
+import org.cougaar.lib.web.arch.util.SynchronizedServlet;
 
 /**
  * FIXME.
@@ -34,15 +40,8 @@ import org.cougaar.lib.web.arch.leaf.LeafServletRegistry;
 public class RootServletRegistry 
 implements ServletRegistry {
 
-  /**
-   * Local names.
-   */
-  private final List localNames;
-
-  /**
-   * Local servlet registry.
-   */
-  private final ServletRegistry localReg;
+  // Map<String, Servlet>
+  private final Map localServlets;
 
   /**
    * Global registry for all (name, "scheme://host:port") pairs.
@@ -59,48 +58,55 @@ implements ServletRegistry {
       throw new NullPointerException();
     }
 
-    localNames = new ArrayList(13);
-
-    // for simplicity we'll reuse the leaf-reg code
-    localReg = new LeafServletRegistry();
+    localServlets = new HashMap(13);
   }
 
   /**
    */
-  public Servlet get(String name) {
-    return localReg.get(name);
+  public Object get(String name) {
+    synchronized (localServlets) {
+      return localServlets.get(name);
+    }
   }
    
   public List listNames() {
-    return localReg.listNames();
-  }
-
-  public List listNames(List toList) {
-    return localReg.listNames(toList);
+    synchronized (localServlets) {
+      return new ArrayList(localServlets.keySet());
+    }
   }
 
   /**
    */
   public void register(String name, Servlet servlet) {
 
-    // take local name
-    synchronized (localNames) {
-      if (localNames.contains(name)) {
+    if ((name == null) ||
+        (servlet == null)) {
+      throw new NullPointerException();
+    }
+
+    // wrap if SingleThreadModel
+    if (servlet instanceof SingleThreadModel) {
+      servlet = new SynchronizedServlet(servlet);
+    }
+
+    // init with dummy config
+    try {
+      servlet.init(DummyServletConfig.getInstance());
+    } catch (ServletException se) {
+      throw new RuntimeException(
+          "Unable to initialize servlet: "+
+          se.getMessage());
+    }
+    
+    // register locally
+    synchronized (localServlets) {
+      Object o = localServlets.put(name, servlet);
+      if (o != null) {
+        // un-put! somewhat wasteful
+        localServlets.put(name, o);
         throw new IllegalArgumentException(
             "Name \""+name+"\" already in local use");
       }
-      localNames.add(name);
-    }
-
-    // register locally -- this should work, since
-    // the name has already been taken
-    try {
-      localReg.register(name, servlet);
-    } catch (RuntimeException re) {
-      synchronized (localNames) {
-        localNames.remove(name);
-      }
-      throw re;
     }
 
     // register globally
@@ -108,13 +114,14 @@ implements ServletRegistry {
       globReg.rebind(name);
     } catch (Exception e) {
       // release locally
+      synchronized (localServlets) {
+        localServlets.remove(name);
+      }
+      // un-init
       try {
-        localReg.unregister(name);
+        servlet.destroy();
       } catch (RuntimeException re) {
         // ignore
-      }
-      synchronized (localNames) {
-        localNames.remove(name);
       }
       throw new RuntimeException(
           "Unable to bind \""+name+"\" in the global registry",
@@ -128,10 +135,8 @@ implements ServletRegistry {
     boolean ret = true;
 
     // quick-check locally
-    synchronized (localNames) {
-      if (!(localNames.contains(name))) {
-        return false;
-      }
+    if (get(name) == null) {
+      return false;
     }
 
     // unregister globally
@@ -143,50 +148,28 @@ implements ServletRegistry {
     }
 
     // unregister locally
-    try {
-      localReg.unregister(name);
-    } catch (RuntimeException re) {
-      // ignore
-      ret = false;
+    Servlet s;
+    synchronized (localServlets) {
+      s = (Servlet) localServlets.remove(name);
     }
 
-    // release local name
-    synchronized (localNames) {
-      localNames.remove(name);
+    // un-init
+    if (s != null) {
+      try {
+        s.destroy();
+      } catch (RuntimeException re) {
+        // ignore
+      }
     }
 
     return ret;
   }
 
   public void unregisterAll() {
-    List l;
-    synchronized (localNames) {
-      if (localNames.isEmpty()) {
-        return;
-      }
-      l = new ArrayList(localNames);
-    }
-
+    List l = listNames();
     for (int i = 0; i < l.size(); i++) {
       String name = (String) l.get(i);
-
-      // unregister globally
-      try {
-        globReg.unbind(name);
-      } catch (Exception e) {
-        // ignore
-      }
-
-      // unregister locally
-      try {
-        localReg.unregister(name);
-      } catch (RuntimeException re) {
-        // ignore
-      }
-    }
-
-    synchronized (localNames) {
-      localNames.removeAll(l);
+      unregister(name);
     }
   }
 

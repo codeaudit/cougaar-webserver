@@ -22,12 +22,13 @@ package org.cougaar.lib.web.service;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.*;
-
-import javax.servlet.*;
-import javax.servlet.http.*;
-
-import org.cougaar.lib.web.arch.ServletRegistry;
+import javax.servlet.Servlet;
+import javax.servlet.ServletConfig;
+import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 /**
  * A "/$name[/.*]" level servlet that<ol>

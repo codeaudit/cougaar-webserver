@@ -63,9 +63,17 @@
     <!-- Set properties to values specific to this module, if any -->
     <property file="${MODSOURCE}/module.properties" />  <!-- per-module properties file! -->
 
+    <!-- if the module source has a file named "custom-build.xml",
+    then we will give it a chance to contribute to the build process.
+    Sortof clunky but it does work.  The main point is that the
+    custom-build.xml file must contain all pre- and post-targets
+    referenced in this file, even if they are empty.  E.g. for now,
+    {pre,post}.{install,clean,junit,rmic,codegen,compile,examples,javadocs}
+    -->
+    <property name="custom.xml" value="${MODSOURCE}/custom-build.xml"/>
+
     <!-- TARGETBASE is where we will install files -->
-    <!-- In a developer environment, this is usually
-    COUGAAR_INSTALL_PATH -->
+    <!-- In a developer environment, this is usually COUGAAR_INSTALL_PATH -->
     <property name="TARGETBASE" value=".." />
     <!-- Set any not-yet-set properties to values specific to this
     installation -->
@@ -305,6 +313,7 @@
     <!-- Prepares all the build directories		               	   -->
     <!-- ============================================================= -->
     <target name="prepare">
+      <available property="has.custom.xml" file="${custom.xml}"/>
       <available property="has.examples" file="${examples}"/>
       <available property="has.build" file="${module.classes}"/>
       <available property="has.src" file="${src}"/>
@@ -408,7 +417,15 @@
       
 
     <!-- Do the basic installation - called by base product Ant script -->
-    <target name="install" depends="install.jar, install.lib">
+    <target name="install" depends="pre.install, really.install, post.install">
+    </target>
+    <target name="really.install" depends="install.jar, install.lib">
+    </target>
+    <target name="pre.install" if="has.custom.xml">
+      <ant antfile="${custom.xml}" dir="${MODSOURCE}" target="pre.install" inheritAll="true"/>
+    </target>
+    <target name="post.install" if="has.custom.xml">
+      <ant antfile="${custom.xml}" dir="${MODSOURCE}" target="post.install" inheritAll="true"/>
     </target>
 
     <!-- Install the Jar file in the target lib directory -->

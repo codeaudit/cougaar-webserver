@@ -21,13 +21,16 @@
 package org.cougaar.lib.web.arch.leaf;
 
 import java.io.IOException;
-import java.util.*;
-
-import javax.servlet.*;
-import javax.servlet.http.*;
-
+import javax.servlet.Servlet;
+import javax.servlet.ServletConfig;
+import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletRequestWrapper;
 import org.cougaar.lib.web.arch.ServletRegistry;
-import org.cougaar.lib.web.arch.DummyServletConfig;
+import org.cougaar.lib.web.arch.util.DummyServletConfig;
+import org.cougaar.lib.web.arch.util.PrefixMatch;
 
 /**
  * This is a <code>Servlet</code> that uses a 
@@ -85,36 +88,68 @@ implements Servlet {
     return "leaf-servlet";
   }
 
-  private Servlet findServlet(
-      ServletRequest req) throws ServletException, IOException {
-    // get the path
-    String path;
+  public void service(
+      ServletRequest req,
+      ServletResponse res) throws ServletException, IOException {
+    HttpServletRequest hreq;
     try {
-      path = ((HttpServletRequest)req).getRequestURI();
+      hreq = (HttpServletRequest) req;
     } catch (ClassCastException cce) {
       // not an HTTP request?
       throw new ServletException("non-HTTP request or response");
     }
 
-    // find the matching servlet
-    Servlet s = servletReg.get(path);
+    // get the path
+    String path = hreq.getRequestURI();
 
-    // no such path
-    if (s == null) {
-      s = unknownPathServlet;
+    // find the matching servlet
+    Object o = servletReg.get(path);
+    Servlet servlet;
+    String pathInfo = null;
+    String servletPath = path;
+    if (o == null) {
+      servlet = unknownPathServlet; // no such path
+    } else if (o instanceof Servlet) {
+      servlet = (Servlet) o;
+    } else {
+      PrefixMatch pm = (PrefixMatch) o;
+      servlet = (Servlet) pm.getValue();
+      servletPath = pm.getPrefix();
+      pathInfo = pm.getTail();
     }
 
-    return s;
-  }
+    // override the request
+    ServletRequest sr =
+      new MyRequestWrapper(
+          hreq, 
+          pathInfo, 
+          servletPath);
 
-  public void service(
-      ServletRequest req,
-      ServletResponse res) throws ServletException, IOException {
-    findServlet(req).service(req, res);
+    // invoke the servlet
+    servlet.service(sr, res);
   }
 
   public void destroy() {
     // ignore -- we're using the dummy config...
   }
 
+  private static final class MyRequestWrapper
+    extends HttpServletRequestWrapper {
+      private final String pathInfo;
+      private final String servletPath;
+      public MyRequestWrapper(
+          HttpServletRequest req,
+          String pathInfo,
+          String servletPath) {
+        super(req);
+        this.pathInfo = pathInfo;
+        this.servletPath = servletPath;
+      }
+      public String getPathInfo() {
+        return pathInfo;
+      }
+      public String getServletPath() {
+        return servletPath;
+      }
+    }
 }

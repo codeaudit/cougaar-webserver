@@ -68,9 +68,9 @@ public class TestServletEngine {
     int httpsPort = 
       Integer.getInteger("org.cougaar.lib.web.https.port", -1).intValue();
 
-    Map serverOptions = Collections.singletonMap("debug", "true");
-    Map httpOptions = Collections.EMPTY_MAP;
-    Map httpsOptions = getHttpsOptions(httpsPort, cip);
+    Map options = new HashMap(13);
+    options.put("debug", "true");
+    options.putAll(getHttpsOptions(httpsPort, cip));
 
     // create the server
     ServletEngine servEng =
@@ -93,15 +93,15 @@ public class TestServletEngine {
       };
 
     System.out.println("Servlet Engine: "+servEng);
-    System.out.println("Server config: "+serverOptions);
-    System.out.println("HTTP  config: "+httpPort+" "+httpOptions);
-    System.out.println("HTTPS config: "+httpsPort+" " +httpsOptions);
+    System.out.println("HTTP  port: "+httpPort);
+    System.out.println("HTTPS port: "+httpsPort);
+    System.out.println("Server options: "+options);
     System.out.println("Gateway Servlet: "+gatewayServlet);
 
     servEng.configure(
-        serverOptions,
-        httpPort, httpOptions,
-        httpsPort, httpsOptions);
+        httpPort,
+        httpsPort,
+        options);
 
     servEng.setGateway(gatewayServlet);
 

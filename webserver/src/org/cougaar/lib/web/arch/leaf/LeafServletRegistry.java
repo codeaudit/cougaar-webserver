@@ -20,24 +20,27 @@
  */
 package org.cougaar.lib.web.arch.leaf;
 
-import java.io.IOException;
-import java.util.*;
-
-import javax.servlet.*;
-
+import java.util.List;
+import javax.servlet.Servlet;
+import javax.servlet.ServletConfig;
+import javax.servlet.ServletException;
+import javax.servlet.SingleThreadModel;
 import org.cougaar.lib.web.arch.ServletRegistry;
-import org.cougaar.lib.web.arch.DummyServletConfig;
+import org.cougaar.lib.web.arch.util.DummyServletConfig;
+import org.cougaar.lib.web.arch.util.PrefixTable;
+import org.cougaar.lib.web.arch.util.PrefixTableImpl;
+import org.cougaar.lib.web.arch.util.SynchronizedServlet;
 
 /**
- * FIXME.
+ * Registry for leaf paths.
  */
 public class LeafServletRegistry 
 implements ServletRegistry {
 
   /**
-   * Map of (name, Servlet).
+   * Table of (String, Servlet).
    */
-  private final Map myServlets = new HashMap();
+  private final PrefixTable table = new PrefixTableImpl();
 
   /**
    */
@@ -47,39 +50,15 @@ implements ServletRegistry {
   /**
    * Get a Servlet with the matching name.
    */
-  public Servlet get(
-      String name) {
-    synchronized (myServlets) {
-      return (Servlet) myServlets.get(name);
-    }
+  public Object get(String name) {
+    return table.match(name);
   }
 
   /**
-   * Equivalent to <tt>listNames(new ArrayList())</tt>.
+   * Get the registered paths.
    */
   public List listNames() {
-    synchronized (myServlets) {
-      return new ArrayList(myServlets.keySet());
-    }
-  }
-
-  /**
-   * Fill the given <code>List</code> with the currently
-   * registered names.
-   */
-  public List listNames(List toList) {
-    Set s;
-    synchronized (myServlets) {
-      s = myServlets.keySet();
-    }
-    int n = s.size();
-    if (n > 0) {
-      Iterator iter = s.iterator();
-      do {
-        toList.add(iter.next());
-      } while (--n > 0);
-    }
-    return toList;
+    return table.list();
   }
 
   /**
@@ -105,6 +84,11 @@ implements ServletRegistry {
       throw new NullPointerException();
     }
 
+    // wrap if SingleThreadModel
+    if (servlet instanceof SingleThreadModel) {
+      servlet = new SynchronizedServlet(servlet);
+    }
+
     // init with dummy config
     try {
       servlet.init(DummyServletConfig.getInstance());
@@ -114,21 +98,11 @@ implements ServletRegistry {
           se.getMessage());
     }
     
-    // wrap if SingleThreadModel
-    if (servlet instanceof SingleThreadModel) {
-      servlet = new SynchronizedServlet(servlet);
-    }
-
     // add
-    synchronized (myServlets) {
-      Object o = myServlets.put(name, servlet);
-      if (o != null) {
-        // un-put! somewhat wasteful
-        myServlets.put(name, o);
-        throw new IllegalArgumentException(
-            "Name \""+name+
-            "\" is already in use by another Servlet");
-      }
+    if (!table.add(name, servlet)) {
+      throw new IllegalArgumentException(
+          "Name \""+name+
+          "\" is already in use by another Servlet");
     }
   }
 
@@ -139,10 +113,8 @@ implements ServletRegistry {
    * @see #register
    */
   public boolean unregister(String name) {
-    Servlet servlet;
-    synchronized (myServlets) {
-      servlet = (Servlet) myServlets.remove(name);
-    }
+    Servlet servlet = (Servlet) table.remove(name);
+
     if (servlet == null) {
       // no such name
       return false;
@@ -159,11 +131,7 @@ implements ServletRegistry {
   }
 
   public void unregisterAll() {
-    List l;
-    synchronized (myServlets) {
-      l = new ArrayList(myServlets.values());
-      myServlets.clear();
-    }
+    List l = table.removeAll();
 
     for (int i = 0; i < l.size(); i++) {
       Servlet servlet = (Servlet) l.get(i);
@@ -173,43 +141,6 @@ implements ServletRegistry {
       } catch (RuntimeException re) {
         // ignore
       }
-    }
-  }
-
-  /**
-   * Simple wrapper for Servlets that implement
-   * <code>SingleThreadModel</code> -- <b>note</b> that
-   * if a Servlet is registered under multiple names then
-   * this will only synchronize per <i>name</i>.
-   */
-  private static final class SynchronizedServlet implements Servlet {
-    private final Servlet s;
-    public SynchronizedServlet(Servlet s) {
-      this.s = s;
-    }
-    // synchronize on service requests.
-    public void service(
-        ServletRequest req,
-        ServletResponse res) throws ServletException, IOException {
-      synchronized (this) {
-        s.service(req, res);
-      }
-    }
-    // delegate the rest
-    public void init(ServletConfig config) throws ServletException {
-      s.init(config);
-    }
-    public ServletConfig getServletConfig() {
-      return s.getServletConfig();
-    }
-    public String getServletInfo() {
-      return s.getServletInfo();
-    }
-    public void destroy() {
-      s.destroy();
-    }
-    public String toString() {
-      return s.toString();
     }
   }
 }

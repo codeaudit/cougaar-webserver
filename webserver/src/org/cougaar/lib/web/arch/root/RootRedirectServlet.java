@@ -21,13 +21,15 @@
 package org.cougaar.lib.web.arch.root;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.URI;
-
-import javax.servlet.*;
-import javax.servlet.http.*;
-
-import org.cougaar.lib.web.arch.DummyServletConfig;
+import javax.servlet.Servlet;
+import javax.servlet.ServletConfig;
+import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import org.cougaar.lib.web.arch.util.DummyServletConfig;
 
 /**
  * A simple <code>Servlet</code> that uses the 

@@ -20,15 +20,21 @@
  */
 package org.cougaar.lib.web.service;
 
-import java.util.*;
-
+import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.List;
 import javax.servlet.Servlet;
-
-import org.cougaar.core.component.*;
+import org.cougaar.core.component.BindingSite;
+import org.cougaar.core.component.Component;
+import org.cougaar.core.component.ServiceBroker;
+import org.cougaar.core.component.ServiceProvider;
+import org.cougaar.core.component.ServiceRevokedListener;
 import org.cougaar.core.service.ServletService;
-
 import org.cougaar.lib.web.arch.ServletRegistry;
-import org.cougaar.lib.web.arch.leaf.*;
+import org.cougaar.lib.web.arch.leaf.LeafServlet;
+import org.cougaar.lib.web.arch.leaf.LeafServletRegistry;
+import org.cougaar.lib.web.arch.leaf.LeafToRootRedirectServlet;
+import org.cougaar.util.GenericStateModelAdapter;
 
 /**
  * A root-level (Node) <code>Component</code> that adds a

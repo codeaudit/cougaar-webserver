@@ -21,7 +21,6 @@
 package org.cougaar.lib.web.arch.server;
 
 import java.util.Map;
-
 import javax.servlet.Servlet;
 import javax.servlet.ServletException;
 
@@ -45,19 +44,15 @@ public interface ServletEngine {
    * Set the HTTP and HTTPS (SSL) configuration -- this can only 
    * be called when <tt>(isRunning() == false)</tt>.
    *
-   * @param serverOptions an option map of server configuration 
-   *    parameters, which are implementation specific.
    * @param httpPort the HTTP port, or -1 if HTTP is disabled
-   * @param httpsOptions an optional map of HTTP configuration 
-   *    parameters, which are implementation specific.
    * @param httpsPort the HTTPS port, or -1 if HTTP is disabled
-   * @param httpsOptions an optional map of HTTPS configuration 
-   *    parameters, which are implementation specific.
+   * @param options an optional map of configuration options
+   *    that are implementation specific (e.g. "http.acceptCount").
    */
   public void configure(
-      Map serverOptions,
-      int httpPort, Map httpOptions,
-      int httpsPort, Map httpsOptions) throws Exception;
+      int httpPort,
+      int httpsPort,
+      Map options) throws Exception;
 
   /**
    * Start the server.

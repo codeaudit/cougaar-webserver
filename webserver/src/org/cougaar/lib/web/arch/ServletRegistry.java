@@ -21,29 +21,34 @@
 package org.cougaar.lib.web.arch;
 
 import java.util.List;
-
-import javax.servlet.*;
+import javax.servlet.Servlet;
 
 /**
- * FIXME.
+ * 
  */
 public interface ServletRegistry {
 
   /**
    * Get a Servlet with the matching name.
+   * <p>
+   * A PrefixMatch will be returned if the name matches a registered
+   * regular expression.  For example:<pre>
+   *   register("foo", myServlet);
+   *   Object o = get("foo/bar");
+   *   assert (o instanceof PrefixMatch);
+   *   Object oo = ((PrefixMatch) o).getValue();
+   *   assert (oo == myServlet);
+   * </pre>
+   *
+   * @return null, Servlet, or PrefixMatch
+   * @see org.cougaar.lib.web.arch.util.PrefixMatch
    */
-  Servlet get(String name);
+  Object get(String name);
 
   /**
-   * Equivalent to <tt>listNames(new ArrayList())</tt>.
+   * List the registered names.
    */
-  public List listNames();
-
-  /**
-   * Fill the given <code>List</code> with the currently
-   * registered names.
-   */
-  public List listNames(List toList);
+  List listNames();
 
   /**
    * Register a (name, servlet) for future "get(name)" requests.
@@ -69,12 +74,12 @@ public interface ServletRegistry {
    *
    * @see #register(String,Servlet)
    */
-  public boolean unregister(String name);
+  boolean unregister(String name);
 
   /**
    * Unregister all Servlets that have been registered by
    * <b>this</b> instance's "register(..)" method.
    */
-  public void unregisterAll();
+  void unregisterAll();
 
 }
