@@ -36,7 +36,7 @@ import org.cougaar.lib.web.arch.leaf.*;
  * which is be used to register <code>Servlet</code>s.
  * <p>
  * For example, Node "N" can create a new root-level ServletService 
- * its children.  When a child, such as Agent "A", requests
+ * its children.  When a child, such as agent "A", requests
  * ServletService it will be able to register itself as "/$A/".
  * <p>
  * This Component overrides the parent's ServletService for all
@@ -182,8 +182,7 @@ implements Component
       this.leafReg = 
         new LeafServletRegistry();
       Servlet unknownPathServlet = 
-        new OldServerRedirectServlet(
-            org.cougaar.core.node.Communications.getLPSPort());
+        new UnknownLeafPathServlet();
       LeafServlet leafServlet = 
         new LeafServlet(
             leafReg, 
@@ -196,12 +195,17 @@ implements Component
       ServletService ss = 
         new LeafServletServiceImpl();
 
-      // add our own "LIST" Servlet to display the contents
-      //   of the leafReg
-      Servlet listRegServlet = 
+      // add our own "/list" Servlet to display the 
+      //   contents of the leafReg
+      Servlet listServlet = 
         new ListRegistryServlet(
             leafReg);
-      ss.register("/list", listRegServlet);
+      ss.register("/list", listServlet);
+
+      // redirect "/agents" back to the root
+      Servlet agentsServlet =
+        new LeafToRootRedirectServlet();
+      ss.register("/agents", agentsServlet);
     }
 
     /**

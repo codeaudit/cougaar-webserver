@@ -27,20 +27,24 @@ import javax.servlet.*;
 import javax.servlet.http.*;
 
 /**
- * A servlet that redirects to another port on the same host.
+ * A servlet that redirects "/$name/foo" to "/foo".
  * <p>
- * This is used as a work-around to redirect unknown Servlet 
- * requests to the old PSP server.
+ * This can be used to a bounce a leaf-level request back to 
+ * the root-level, assuming that the request is (logically) for
+ * the root-level.  This is very handy when the client doesn't
+ * know which server the leaf happens to be located at and wants 
+ * to rely upon redirects.  In other words, if leaf "X" is 
+ * configured to bounce "/foo" back to the root, it allows the 
+ * user to easily phrase:<pre>
+ *    "Wherever <i>/$name</i> happens to be right now, 
+ *     invoke <i>/foo</i> to its root"
+ * </pre>
+ * <p>
+ * Note that the root shouldn't bounce this back to the leaf,
+ * otherwise it's a loop!
  */
-public class OldServerRedirectServlet 
+public class LeafToRootRedirectServlet 
 implements Servlet {
-
-  private final int oldPort;
-
-  public OldServerRedirectServlet(
-      int oldPort) {
-    this.oldPort = oldPort;
-  }
 
   public void service(
       ServletRequest req,
@@ -66,15 +70,26 @@ implements Servlet {
       HttpServletRequest httpReq,
       HttpServletResponse httpRes) throws ServletException, IOException {
 
+    // get the "/$name[/.*]"
+    String path = httpReq.getRequestURI();
+    // assert ((path != null) && (path.startsWith("/$")))
+    int sepIdx = path.indexOf('/', 2);
+    if (sepIdx < 0) {
+      sepIdx = path.length();
+    }
+    String trimPath = path.substring(sepIdx);
+
     String queryString = 
       httpReq.getQueryString();
 
     // create the new location string
     String location = 
-      "http://"+
-      "localhost:"+
-      oldPort+
-      httpReq.getRequestURI()+
+      httpReq.getScheme()+
+      "://"+
+      httpReq.getServerName()+
+      ":"+
+      httpReq.getServerPort()+
+      trimPath+
       ((queryString != null) ? 
        ("?"+queryString) :
        (""));
@@ -98,7 +113,7 @@ implements Servlet {
     return config;
   }
   public String getServletInfo() {
-    return "old-server-redirect";
+    return "leaf-to-root-redirect";
   }
   public void destroy() {
     // ignore

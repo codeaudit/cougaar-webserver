@@ -29,41 +29,19 @@ import javax.servlet.http.*;
 import org.cougaar.lib.web.arch.ServletRegistry;
 
 /**
- * A servlet that redirects an empty-name request ("/$" or "/$[/.*]")
- * and missing-name request (no "/$name") to a <b>random</b> local 
- * name.
+ * A servlet that displays an error message when an unknown
+ * leaf path ("/$name/junk") is requested.
  * <p>
- * The "/$/" is useful when one can assume that any locally-registered
- * Servlet can handle the request.  This is a new supported usage.
- * <p>
- * I'd like to remove the missing-name request and force users to 
- * <i>always</i> specify a name, but for now this is necessary for 
- * backwards compatibility.  Consider it <i>deprecated</i>...
- *
- * @see UnknownRootNameServlet
+ * This can be used as a general "/help" page.  It simply
+ * tells the client this agent's name and refers the client 
+ * to the "/list" page.
  */
-public class RandomLocalRedirectServlet 
+public class UnknownLeafPathServlet 
 implements Servlet {
-
-  private Random rand;
-  private ServletRegistry reg;
-
-  public RandomLocalRedirectServlet(
-      ServletRegistry reg) {
-    this.reg = reg;
-
-    // null-check
-    if (reg == null) {
-      throw new NullPointerException();
-    }
-
-    this.rand = new Random();
-  }
 
   public void service(
       ServletRequest req,
       ServletResponse res) throws ServletException, IOException {
-
     HttpServletRequest httpReq;
     HttpServletResponse httpRes;
     try {
@@ -74,56 +52,67 @@ implements Servlet {
       throw new ServletException("non-HTTP request or response");
     }
 
-    redirect(httpReq, httpRes);
+    displayErrorPage(httpReq, httpRes);
   }
 
   /**
-   * Utility method for redirect.
+   * Utility method.
    */
-  public final void redirect(
+  public final void displayErrorPage(
       HttpServletRequest req,
       HttpServletResponse res) throws ServletException, IOException {
 
-    // get the listing of all local names
-    List localNames = reg.listNames();
-    int n = ((localNames != null) ? localNames.size() : 0);
-    if (n <= 0) {
-      res.sendError(
-          HttpServletResponse.SC_NOT_FOUND, 
-          "Zero local agents");
-      return;
-    }
-
-    // select the random name
-    int randIdx = rand.nextInt(n);
-    String randName = (String) localNames.get(randIdx);
-
-    // get the "/$[/.*]"
+    // get the "/$name[/.*]"
     String path = req.getRequestURI();
+    String name;
     String trimPath;
     if (path.startsWith("/$")) {
-      trimPath = path.substring(2);
+      int sepIdx = path.indexOf('/', 2);
+      if (sepIdx < 0) {
+        name = path.substring(2);
+        trimPath = "/";
+      } else {
+        name = path.substring(2, sepIdx);
+        trimPath = path.substring(sepIdx);
+      }
     } else {
+      // might want to reuse this servlet for missing-name reqs
+      name = "";
       trimPath = path;
     }
 
-    String queryString = 
-      req.getQueryString();
-
-    // create the new location string
-    String location = 
-      "/$"+
-      randName+
+    String title = 
+      "Unknown Servlet Path \""+
       trimPath+
-      ((queryString != null) ? 
-       ("?"+queryString) :
-       (""));
+      "\" within Agent \""+
+      name+
+      "\"";
 
-    // encode for redirect -- typically a no-op
-    location = res.encodeRedirectURL(location);
+    StringBuffer buf = new StringBuffer();
+    buf.append("<html><head><title>");
+    buf.append(title);
+    buf.append(
+        "</title></head>\n"+
+        "<body><p><h1>");
+    buf.append(title);
+    buf.append(
+        "</h1>\n"+
+        "<p>Options:<ul>\n"+
+        "<li><a href=\"/$");
+    buf.append(name);
+    buf.append(
+        "/list\">List paths in agent \"");
+    buf.append(name);
+    buf.append(
+        "\"</a></li>\n"+
+        "<li><a href=\"/agents\">List local agents</a></li>\n"+
+        "<li><a href=\"/agents?all\">List all agents</a></li>\n"+
+        "</ul>\n"+
+        "</body></html>");
 
-    // redirect the request to the remote location
-    res.sendRedirect(location);
+    res.sendError(
+        HttpServletResponse.SC_NOT_FOUND, 
+        buf.toString());
   }
 
   //
@@ -138,7 +127,7 @@ implements Servlet {
     return config;
   }
   public String getServletInfo() {
-    return "random-local-redirect";
+    return "unknown-root-name";
   }
   public void destroy() {
     // ignore

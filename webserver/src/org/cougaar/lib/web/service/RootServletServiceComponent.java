@@ -67,15 +67,15 @@ import org.cougaar.util.Parameters;
  *
  * @property org.cougaar.lib.web.http.port
  *   The base integer port for the HTTP server, which defaults to
- *   8800.  If a negative number is passed then HTTP listening
- *   is disabled.  Also see the "org.cougaar.lib.web.scanRange"
- *   property.
+ *   8800.  The most common value is 8800.  If a negative number 
+ *   is passed then HTTP listening is disabled.  Also see the 
+ *    "org.cougaar.lib.web.scanRange" property.
  *
  * @property org.cougaar.lib.web.https.port
  *   The base integer port for the HTTPS server, which defaults to
- *   8400.  If a negative number is passed then HTTPS listening
- *   is disabled.  Also see the "org.cougaar.lib.web.scanRange"
- *   property.
+ *   -1.  The most common value is 8400.  If a negative number is 
+ *   passed then HTTPS listening is disabled.  Also see the 
+ *   "org.cougaar.lib.web.scanRange" property.
  *
  * @property org.cougaar.lib.web.https.clientAuth
  *   Used to enable HTTPS client-authentication.  Defaults to
@@ -133,7 +133,7 @@ implements Component
     int httpsPort = 
       Integer.getInteger(
           "org.cougaar.lib.web.https.port",
-          8400).intValue();
+          (-1)).intValue();
     boolean clientAuth =
       Boolean.getBoolean(
           "org.cougaar.lib.web.https.clientAuth");
@@ -363,7 +363,7 @@ implements Component
     this.rootReg = 
       new RootServletRegistry(globReg);
     Servlet noNameServlet = 
-      new RandomLocalRedirectServlet(rootReg);
+      new RootNonNameServlet(rootReg, globReg);
     Servlet unknownNameServlet = 
       new UnknownRootNameServlet(rootReg);
     Servlet remoteNameServlet = 

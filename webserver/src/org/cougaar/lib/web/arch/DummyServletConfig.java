@@ -79,7 +79,7 @@ implements ServletConfig {
     return "no-servlet-name";
   }
 
-  private static class DummyServletContext 
+  private static class DummyServletContext  // ignore deprecation warnings!
   implements ServletContext 
   {
     public ServletContext getContext(String uripath) {
