@@ -267,6 +267,12 @@ public class EmbeddedTomcat extends Catalina {
 
     ServerSocketFactory fact;
     if (factoryClassname == null) {
+      if ((keystore == null) ||
+          (keypass == null)) {
+        throw new IllegalArgumentException(
+            "Must specify a keystore and keypass when using "+
+            "HTTPS and the default server socket factory");
+      }
       fact = new SSLServerSocketFactory();
     } else {
       try {
