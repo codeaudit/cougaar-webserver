@@ -14,38 +14,27 @@
 
 <web-app>
 
-    <!-- load the hook for Cougaar ServletService delegation -->
+    <!--
+      Load the hook for Cougaar ServletService delegation.
+
+      From Tomcat's point of view, there's only this single servlet!
+
+      Note that Tomcat creates the HookServlet instance, not Cougaar,
+      so the HookServlet implementation uses a static field to
+      forward all requests into Cougaar.
+    -->
     <servlet>
         <servlet-name>cougaar</servlet-name>
         <servlet-class>org.cougaar.lib.web.tomcat.HookServlet</servlet-class>
+        <load-on-startup>1</load-on-startup>
     </servlet>
-
-    <!-- specify an error page for custom error messages -->
-<!-- unnecessary
-    <servlet>
-        <servlet-name>err404</servlet-name>
-        <servlet-class>org.cougaar.lib.web.tomcat.ErrorServlet</servlet-class>
-    </servlet>
--->
     <servlet-mapping>
         <servlet-name>cougaar</servlet-name>
         <url-pattern>/*</url-pattern> 
     </servlet-mapping>
 
-<!--    <servlet-mapping>
-        <servlet-name>err404</servlet-name>
-        <url-pattern>/error404</url-pattern> 
-    </servlet-mapping>
--->
-
-<!-- Not Needed if have the servlet-mapping element
-    <error-page>
-        <error-code>404</error-code>
-        <location>/error404</location>
-    </error-page>
--->
     <!-- 
-      Enable FORM-based authentication.
+      Example FORM-based authentication.
 
       In this example we'll force all "*.secure" URL requests 
       to popup a username-password login.  See 
