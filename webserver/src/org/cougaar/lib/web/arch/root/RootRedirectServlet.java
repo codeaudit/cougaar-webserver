@@ -115,13 +115,37 @@ implements Servlet {
       unknownNameServlet.service(req, res);
       return;
     }
+    String host = uri.getHost();
+    int port = uri.getPort();
+
+    // check for slow white pages update
+    //
+    // redirect loops are still possible but at least we catch the
+    // self-loop case.
+    String localHost = req.getServerName();
+    int localPort = req.getServerPort();
+    if ((host == null ?
+          localHost == null : 
+          host.equals(localHost)) &&
+        (port == localPort)) {
+      // generate error response
+      res.sendError(
+          HttpServletResponse.SC_NOT_FOUND, 
+          "Servlet server "+localHost+":"+localPort+
+          " does not contain agent \""+encName+
+          "\".  The local white pages cache apparently contains"+
+          " a stale or invalid entry: "+uri+
+          ".  Please select a different host:port starting point"+
+          " or try again later.");
+      return;
+    }
 
     String queryString = req.getQueryString();
 
     // create the new location string
     String location = 
       scheme+"://"+
-      uri.getHost()+":"+uri.getPort()+
+      host+":"+port+
       path+
       ((queryString != null) ?
        ("?"+queryString) :
