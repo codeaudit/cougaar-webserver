@@ -300,7 +300,7 @@ public class EmbeddedTomcat extends Catalina {
       // protocol?
     }
 
-    addSecureEndpoint(port, address, fact);
+    addSecureEndpoint(port, null, fact);
   }
 
   /**
