@@ -96,7 +96,7 @@ implements ServletRegistry {
    * "Servlet.init()" and "Servlet.destroy()" is not
    * defined.
    *
-   * @see #unregister(name)
+   * @see #unregister(String)
    */
   public void register(String name, Servlet servlet) {
 

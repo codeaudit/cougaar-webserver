@@ -74,12 +74,12 @@ public interface ServletEngine {
    * Start the server.
    *
    * @see #isRunning()
-   * @see #destroy()
+   * @see #stop()
    */
   public void start() throws Exception;
 
   /**
-   * @return true if the server has been started and not destroyed yet.
+   * @return true if the server has been started and not stopped yet.
    */
   public boolean isRunning();
 

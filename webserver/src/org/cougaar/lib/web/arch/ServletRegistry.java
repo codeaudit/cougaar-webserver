@@ -59,7 +59,7 @@ public interface ServletRegistry {
    * "Servlet.init()" and "Servlet.destroy()" is not
    * defined.
    *
-   * @see #unregister(name)
+   * @see #unregister(String)
    */
   void register(String name, Servlet servlet);
 
@@ -67,7 +67,7 @@ public interface ServletRegistry {
    * Unregister and "Servlet.destroy()" the Servlet with the
    * matching name.
    *
-   * @see #register(name,Servlet)
+   * @see #register(String,Servlet)
    */
   public boolean unregister(String name);
 

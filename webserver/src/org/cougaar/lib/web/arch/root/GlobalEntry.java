@@ -30,7 +30,7 @@ import java.util.List;
  *    ("coug" -&gt; "www.cougaar.org, 80, www.cougaar.org, 443")
  * </pre>.
  *
- * @see #GlobalRegistry.find(String)
+ * @see GlobalRegistry#find(String)
  */
 public final class GlobalEntry 
 implements Serializable, Cloneable {
