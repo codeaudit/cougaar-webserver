@@ -80,6 +80,9 @@ import org.cougaar.util.Parameters;
  * @property org.cougaar.lib.web.https.clientAuth
  *   Used to enable HTTPS client-authentication.  Defaults to
  *   false.
+ *
+ * @property org.cougaar.lib.web.debug
+ *   Enable low-level debugging output.  Defaults to false.
  * </pre>
  *
  * @see ServletService
@@ -120,6 +123,10 @@ implements Component
 
   public void initialize() {
     super.initialize();
+
+    this.debug =
+      Boolean.getBoolean(
+          "org.cougaar.lib.web.debug");
 
     // config data from system properties:
     this.scanRange = 
