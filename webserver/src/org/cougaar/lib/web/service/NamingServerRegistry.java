@@ -78,36 +78,32 @@ implements GlobalRegistry {
 
   public void configure(
       HttpConfig httpConfig,
-      HttpsConfig httpsConfig) {
-    // extract the (addr, port) pairs
-    InetAddress httpAddr = null;
+      HttpsConfig httpsConfig) throws IOException {
+    // extract the ports
     int httpPort = -1;
     if (httpConfig != null) {
-      httpAddr = httpConfig.getAddress();
       httpPort = httpConfig.getPort();
     }
-    InetAddress httpsAddr = null;
     int httpsPort = -1;
     if (httpsConfig != null) {
       HttpConfig tmp = httpsConfig.getHttpConfig();
-      httpsAddr = tmp.getAddress();
       httpsPort = tmp.getPort();
     }
-
-    configure(
-        httpAddr, httpPort,
-        httpsAddr, httpsPort);
+    // configure
+    configure(httpPort, httpsPort);
   }
 
   public void configure(
-      InetAddress httpAddr, int httpPort,
-      InetAddress httpsAddr, int httpsPort) {
+      int httpPort,
+      int httpsPort) throws IOException {
+
+    InetAddress addr = InetAddress.getLocalHost();
 
     this.localTemplate = 
       new GlobalEntry(
           null,
-          httpAddr, httpPort,
-          httpsAddr, httpsPort);
+          addr, httpPort,
+          addr, httpsPort);
 
     // for now don't advertise the empty "host:port"
   }

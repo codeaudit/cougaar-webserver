@@ -21,7 +21,6 @@
 package org.cougaar.lib.web.service;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.util.*;
 
 import javax.naming.directory.DirContext;
@@ -172,13 +171,6 @@ implements Component
       cip+"/webtomcat/data";
     String serverKeyname = "tomcat";
     String trustKeystore = serverKeystore;
-    InetAddress localAddr;
-    try {
-      localAddr = InetAddress.getLocalHost();
-    } catch (Exception e) {
-      throw new RuntimeException(
-          "Unable to get localhost address: "+e.getMessage());
-    }
 
     //
     // examine the parameters
@@ -205,20 +197,31 @@ implements Component
     // is in use then another port will be used.
     this.initHttpConfig = 
       ((httpPort > 0) ?
-       (new HttpConfig(localAddr, httpPort)) :
+       (new HttpConfig(httpPort)) :
        (null));
 
     // create the HTTPS config
     this.initHttpsConfig =
       ((httpsPort > 0) ?
        (new HttpsConfig(
-          new HttpConfig(localAddr, httpsPort),
+          new HttpConfig(httpsPort),
           clientAuth,
           serverKeystore,
           serverKeypass,
           serverKeyname,
           trustKeystore)) :
        (null));
+
+    if (debug) {
+      System.out.println(
+          "Initialized server with "+
+          ((initHttpConfig != null) ?
+           ("\nHTTP : "+initHttpConfig) :
+           (""))+
+          ((initHttpsConfig != null) ?
+           ("\nHTTPS: "+initHttpsConfig) :
+           ("")));
+    }
   }
 
   public void setParameter(Object o) {
@@ -260,6 +263,11 @@ implements Component
       throw re;
     } catch (Exception e) {
       throw new RuntimeException(e.getMessage());
+    }
+
+    if (debug) {
+      System.out.println(
+          "Root server ("+servEng+") is running");
     }
   }
 
@@ -420,20 +428,35 @@ implements Component
       }
 
       // success
+      if (debug) {
+        System.out.println(
+            "\nServer launched with: "+
+            ((httpPort > 0) ? 
+             ("\nHTTP : "+usedHttpConfig) :
+             (""))+
+            ((httpPort > 0) ? 
+             ("\nHTTPS: "+usedHttpsConfig) :
+             ("")));
+      }
+
       return;
     }
 
     // failure; tried too many ports
-    throw new java.net.BindException(
-        "Unable to launch server"+
-        ((httpPort > 0) ? 
-         (", attempted "+maxI+" HTTP  ports ("+
-          httpPort+"-"+(httpPort +(maxI-1))+")") :
-         (""))+
-        ((httpPort > 0) ? 
-         (", attempted "+maxI+" HTTPS ports ("+
-          httpsPort+"-"+(httpsPort+(maxI-1))+")") :
-         ("")));
+    String msg = 
+      "Unable to launch server"+
+      ((httpPort > 0) ? 
+       (", attempted "+maxI+" HTTP  ports ("+
+        httpPort+"-"+(httpPort +(maxI-1))+")") :
+       (""))+
+      ((httpPort > 0) ? 
+       (", attempted "+maxI+" HTTPS ports ("+
+        httpsPort+"-"+(httpsPort+(maxI-1))+")") :
+       (""));
+    if (debug) {
+      System.out.println(msg);
+    }
+    throw new java.net.BindException(msg);
   }
 
   /**

@@ -20,8 +20,6 @@
  */
 package org.cougaar.lib.web.arch.server;
 
-import java.net.InetAddress;
-
 import javax.servlet.Servlet;
 import javax.servlet.ServletException;
 

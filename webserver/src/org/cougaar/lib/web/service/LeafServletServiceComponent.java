@@ -201,7 +201,7 @@ implements Component
       Servlet listRegServlet = 
         new ListRegistryServlet(
             leafReg);
-      ss.register("/LIST", listRegServlet);
+      ss.register("/list", listRegServlet);
     }
 
     /**

@@ -21,7 +21,6 @@
 package org.cougaar.lib.web.arch.server;
 
 import java.io.Serializable;
-import java.net.InetAddress;
 
 /**
  * HTTPS (SSL) configuration.

@@ -22,33 +22,23 @@ package org.cougaar.lib.web.arch.server;
 
 import java.io.Serializable;
 
-import java.net.InetAddress;
-
 /**
  * HTTP configuration variables.
  */
 public final class HttpConfig 
 implements Serializable {
 
-  private final InetAddress addr;
   private final int port;
 
   /**
    * Create a new HTTP configuration.
    * <p>
-   * For now only the server's host and port are specified.
-   * Localhost is typically used as the address.
-   * The port is typically 80 or 8080.
+   * For now only the server's port is specified, and
+   * "localhost" is assumed.  The port is typically 
+   * 80 or 8080.
    */
-  public HttpConfig(
-      InetAddress addr,
-      int port) {
-    this.addr = addr;
+  public HttpConfig(int port) {
     this.port = port;
-
-    if (addr == null) {
-      throw new NullPointerException();
-    }
 
     if (port <= 0) {
       throw new IllegalArgumentException(
@@ -60,19 +50,14 @@ implements Serializable {
    * Create a new HTTP config that is identical to the
    * given <tt>old</tt> HttpConfig, but replace the
    * <tt>old.getPort()</tt> with the given <tt>port</tt>.
+   * <p>
+   * This will be more useful if/when other HTTP config
+   * details are added to HttpConfig.
    */
   public HttpConfig(
       HttpConfig old,
       int port) {
-    this(old.getAddress(), port);
-  }
-
-  public InetAddress getAddress() {
-    return addr;
-  }
-
-  public String getHostname() {
-    return ((addr != null) ? addr.getHostName() : null);
+    this(port);
   }
 
   public int getPort() {
@@ -106,6 +91,6 @@ implements Serializable {
 
   public String toString() {
     return 
-      "("+getHostname()+":"+getPort()+")";
+      "(localhost:"+getPort()+")";
   }
 }

@@ -21,7 +21,6 @@
 package org.cougaar.lib.web.arch.root;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.util.List;
 
 import org.cougaar.lib.web.arch.server.HttpConfig;
@@ -30,6 +29,9 @@ import org.cougaar.lib.web.arch.server.HttpsConfig;
 /**
  * Interface to a global registry of servers and their
  * (globally-unique) child names.
+ * <p>
+ * A server can only run on "localhost", so "localhost"
+ * is used when adding a name to the registry.
  * <p>
  * For example, host "bbn.com" could have HTTP support on port
  * 4321 and HTTPS support on port 8765, and contain two (internal) 
@@ -46,12 +48,12 @@ import org.cougaar.lib.web.arch.server.HttpsConfig;
 public interface GlobalRegistry {
 
   /**
-   * Equivalent to taking the (address, port) from
+   * Equivalent to taking the port from
    * both HTTP[S] configs and calling the other
    * <tt>configure(..)</tt> method.
    * <p>
    * If a parameter is null then it is treated as
-   * (null, -1).
+   * (-1).
    */
   void configure(
       HttpConfig httpConfig,
@@ -65,8 +67,8 @@ public interface GlobalRegistry {
    * registry is first created.
    */
   void configure(
-      InetAddress httpAddr, int httpPort,
-      InetAddress httpsAddr, int httpsPort) throws IOException;
+      int httpPort,
+      int httpsPort) throws IOException;
 
   /**
    * Associate the given name in the global registry with this
