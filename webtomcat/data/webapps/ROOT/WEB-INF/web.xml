@@ -34,11 +34,13 @@
         <servlet-name>err404</servlet-name>
         <url-pattern>/error404</url-pattern> 
     </servlet-mapping>
+
+    <!-- Not Needed if have the servlet-mapping element
     <error-page>
         <error-code>404</error-code>
         <location>/error404</location>
     </error-page>
-
+-->
     <!-- 
       Enable FORM-based authentication.
 
