@@ -183,7 +183,7 @@ implements Component
         new LeafServletRegistry();
       Servlet unknownPathServlet = 
         new OldServerRedirectServlet(
-            org.cougaar.core.society.Communications.getLPSPort());
+            org.cougaar.core.node.Communications.getLPSPort());
       LeafServlet leafServlet = 
         new LeafServlet(
             leafReg, 

@@ -28,7 +28,7 @@ import javax.naming.directory.DirContext;
 import javax.servlet.Servlet;
 
 import org.cougaar.core.component.*;
-import org.cougaar.core.naming.NamingService;
+import org.cougaar.core.service.NamingService;
 import org.cougaar.core.servlet.ServletService;
 
 import org.cougaar.lib.web.arch.ServletRegistry;

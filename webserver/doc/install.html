@@ -179,13 +179,13 @@ where the loader is:
 </pre><br>
 For build 8.6.2 there are only two example Servlet <b><i>&lt;classname&gt;</i></b>s:
 <pre>
-   org.cougaar.domain.planning.servlet.PlanViewServlet      <i>(/tasks)</i> <a name="tasks">
-   org.cougaar.domain.mlm.ui.psp.transit.CompletionServlet  <i>(/completion)</i><a name="completion">
+   org.cougaar.planning.servlet.PlanViewServlet      <i>(/tasks)</i> <a name="tasks">
+   org.cougaar.mlm.ui.psp.transit.CompletionServlet  <i>(/completion)</i><a name="completion">
 </pre><br>
 So these two lines must be added to the ".ini" files:
 <pre>
-  plugin = org.cougaar.core.servlet.SimpleServletComponent(org.cougaar.domain.planning.servlet.PlanViewServlet, /tasks)
-  plugin = org.cougaar.core.servlet.SimpleServletComponent(org.cougaar.domain.mlm.ui.psp.transit.CompletionServlet, /completion)
+  plugin = org.cougaar.core.servlet.SimpleServletComponent(org.cougaar.planning.servlet.PlanViewServlet, /tasks)
+  plugin = org.cougaar.core.servlet.SimpleServletComponent(org.cougaar.mlm.ui.psp.transit.CompletionServlet, /completion)
 </pre><br>
 <p>
 All Servlet requests must be prefixed with the "/$AgentName/" of the
