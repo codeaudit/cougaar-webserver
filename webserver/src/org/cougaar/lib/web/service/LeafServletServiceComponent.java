@@ -54,7 +54,7 @@ implements Component
   private String name;
 
   private ServletService rootServletService;
-  private ServiceProvider leafSP;
+  private LeafServletServiceProviderImpl leafSP;
 
   public void setBindingSite(BindingSite bs) {
     // only care about the service broker
@@ -92,29 +92,44 @@ implements Component
     super.load();
 
     // get the (root) servlet service
-    rootServletService = (ServletService)
-      sb.getService(this, ServletService.class, null);
     if (rootServletService == null) {
-      throw new RuntimeException(
-          "Leaf servlet-service unable to"+
-          " obtain (root) ServletService");
+      rootServletService = (ServletService)
+        sb.getService(this, ServletService.class, null);
+      if (rootServletService == null) {
+        throw new RuntimeException(
+            "Leaf servlet-service unable to"+
+            " obtain (root) ServletService");
+      }
     }
 
     // create and advertise our service
     // 
     // NOTE: this overrides the rootServletService
-    this.leafSP = new LeafServletServiceProviderImpl();
-    sb.addService(ServletService.class, leafSP);
+    if (leafSP == null) {
+      this.leafSP = new LeafServletServiceProviderImpl();
+      leafSP.start();
+      sb.addService(ServletService.class, leafSP);
+    }
   }
 
-  //
-  // FIXME implement "suspend()"
-  //
+  public void suspend() {
+    super.suspend();
+    if (leafSP != null) {
+      leafSP.stop();
+    }
+  }
+
+  public void resume() {
+    if (leafSP != null) {
+      leafSP.start();
+    }
+    super.resume();
+  }
 
   public void unload() {
-
     // revoke our service
     if (leafSP != null) {
+      leafSP.stop();
       sb.revokeService(ServletService.class, leafSP);
       leafSP = null;
     }
@@ -139,15 +154,76 @@ implements Component
   private class LeafServletServiceProviderImpl
   implements ServiceProvider {
 
-    private ServletRegistry leafReg;
+    private final ServletRegistry leafReg;
+    private final LeafServlet leafServlet;
+    private boolean isRegistered;
 
     public LeafServletServiceProviderImpl() {
+      // create a servlet and registry
+      this.leafReg = 
+        new LeafServletRegistry();
+      Servlet unknownPathServlet = 
+        new UnknownLeafPathServlet();
+      this.leafServlet = 
+        new LeafServlet(
+            leafReg, 
+            unknownPathServlet);
+
+      // get our own service
+      ServletService ss = 
+        new LeafServletServiceImpl();
+
+      // add our own "/list" Servlet to display the 
+      //   contents of the leafReg
       try {
-        configure();
+        Servlet listServlet = 
+          new ListRegistryServlet(
+              leafReg);
+        ss.register("/list", listServlet);
       } catch (Exception e) {
+        // shouldn't happen
         throw new RuntimeException(
-            "Unable to register \""+name+"\" for Servlet service: "+
-            e.getMessage());
+            "Unable to register \"/list\" servlet", e);
+      }
+
+      // redirect "/agents" back to the root
+      try {
+        Servlet agentsServlet =
+          new LeafToRootRedirectServlet();
+        ss.register("/agents", agentsServlet);
+      } catch (Exception e) {
+        // shouldn't happen
+        throw new RuntimeException(
+            "Unable to register \"/agents\" servlet", e);
+      }
+
+      // wait until "start()" to register
+    }
+    
+    public void start() {
+      if (!(isRegistered)) {
+        try {
+          // register name
+          rootServletService.register(name, leafServlet);
+        } catch (Exception e) {
+          throw new RuntimeException(
+              "Unable to register \""+name+"\" for Servlet service",
+              e);
+        }
+        isRegistered = true;
+      }
+    }
+
+    public void stop() {
+      if (isRegistered) {
+        try {
+          // unregister name
+          rootServletService.unregister(name);
+
+          // FIXME wait until all child servlets have halted
+        } finally {
+          isRegistered = false;
+        }
       }
     }
 
@@ -184,38 +260,6 @@ implements Component
     //
     // private utility methods and classes:
     //
-
-    private void configure() throws Exception {
-
-      // create a servlet and registry
-      this.leafReg = 
-        new LeafServletRegistry();
-      Servlet unknownPathServlet = 
-        new UnknownLeafPathServlet();
-      LeafServlet leafServlet = 
-        new LeafServlet(
-            leafReg, 
-            unknownPathServlet);
-
-      // register name
-      rootServletService.register(name, leafServlet);
-
-      // get our own service
-      ServletService ss = 
-        new LeafServletServiceImpl();
-
-      // add our own "/list" Servlet to display the 
-      //   contents of the leafReg
-      Servlet listServlet = 
-        new ListRegistryServlet(
-            leafReg);
-      ss.register("/list", listServlet);
-
-      // redirect "/agents" back to the root
-      Servlet agentsServlet =
-        new LeafToRootRedirectServlet();
-      ss.register("/agents", agentsServlet);
-    }
 
     /**
      * Leaf's ServletService implementation.
