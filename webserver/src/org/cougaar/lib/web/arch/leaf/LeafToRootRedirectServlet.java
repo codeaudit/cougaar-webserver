@@ -18,7 +18,7 @@
  *  PERFORMANCE OF THE COUGAAR SOFTWARE.
  * </copyright>
  */
-package org.cougaar.lib.web.service;
+package org.cougaar.lib.web.arch.leaf;
 
 import java.io.IOException;
 import java.util.*;
