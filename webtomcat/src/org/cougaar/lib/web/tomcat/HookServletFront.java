@@ -1,6 +1,6 @@
 /*
  * <copyright>
- *  Copyright 1997-2002 Networks Associates Technology, Inc.
+ *  Copyright 1997-2003 Networks Associates Technology, Inc
  *  under sponsorship of the Defense Advanced Research Projects Agency (DARPA).
  * 
  *  This program is free software; you can redistribute it and/or modify
