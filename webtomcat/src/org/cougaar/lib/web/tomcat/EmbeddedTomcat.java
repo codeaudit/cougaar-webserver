@@ -56,7 +56,7 @@ public class EmbeddedTomcat extends Catalina {
    * Returns a reference to the Server object. 
    *
    * @throws IllegalStateException If the configuration file hasn't been read.
-   * @see readConfigFile
+   * @see #readConfigFile
    */
   public Server getServer() {
     if (server == null) 
@@ -69,7 +69,7 @@ public class EmbeddedTomcat extends Catalina {
    * the configuration file.
    *
    * @throws IllegalStateException If the configuration file hasn't been read.
-   * @see readConfigFile
+   * @see #readConfigFile
    */
   public Service getService() {
     Service[] services = getServer().findServices();
@@ -84,7 +84,7 @@ public class EmbeddedTomcat extends Catalina {
    * Returns the Engine object. There may only be one Engine.
    *
    * @throws IllegalStateException If the configuration file hasn't been read.
-   * @see readConfigFile
+   * @see #readConfigFile
    */
   public Engine getEngine() {
     Container contEngine = getService().getContainer();
