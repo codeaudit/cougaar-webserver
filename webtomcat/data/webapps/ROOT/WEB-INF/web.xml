@@ -20,22 +20,25 @@
         <servlet-class>org.cougaar.lib.web.tomcat.HookServlet</servlet-class>
     </servlet>
 
+<!-- unnecessary
     <!-- specify an error page for custom error messages -->
     <servlet>
         <servlet-name>err404</servlet-name>
         <servlet-class>org.cougaar.lib.web.tomcat.ErrorServlet</servlet-class>
     </servlet>
-
+-->
     <servlet-mapping>
         <servlet-name>cougaar</servlet-name>
         <url-pattern>/*</url-pattern> 
     </servlet-mapping>
-    <servlet-mapping>
+
+<!--    <servlet-mapping>
         <servlet-name>err404</servlet-name>
         <url-pattern>/error404</url-pattern> 
     </servlet-mapping>
+-->
 
-    <!-- Not Needed if have the servlet-mapping element
+<!-- Not Needed if have the servlet-mapping element
     <error-page>
         <error-code>404</error-code>
         <location>/error404</location>
