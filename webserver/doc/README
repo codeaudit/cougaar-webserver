@@ -11,4 +11,5 @@ Contains two packages:
     uses the above "org.cougaar.lib.web.arch" classes
     and core classes.
 
-[Further documentation will be added in the near future]
+See "install.html" for installation and testing 
+documentation.
