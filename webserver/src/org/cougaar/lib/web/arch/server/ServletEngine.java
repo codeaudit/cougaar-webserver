@@ -20,9 +20,10 @@
  */
 package org.cougaar.lib.web.arch.server;
 
-import java.net.BindException;
 import java.io.IOException;
+import java.net.BindException;
 import java.util.Map;
+
 import javax.servlet.Servlet;
 import javax.servlet.ServletException;
 

@@ -23,9 +23,9 @@
  */
 package org.cougaar.lib.web.tomcat;
 
+import java.beans.PropertyChangeListener;
 import java.security.Principal;
 import java.security.cert.X509Certificate;
-import java.beans.PropertyChangeListener;
 
 import org.apache.catalina.Container;
 import org.apache.catalina.Realm;

@@ -26,7 +26,6 @@ package org.cougaar.lib.web.tomcat;
 import java.lang.reflect.Method;
 
 import org.apache.catalina.Context;
-import org.apache.catalina.Valve;
 import org.apache.catalina.core.StandardContext;
 
 /**

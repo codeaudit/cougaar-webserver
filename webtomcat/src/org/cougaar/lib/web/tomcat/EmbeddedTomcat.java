@@ -20,22 +20,19 @@
  */
 package org.cougaar.lib.web.tomcat;
 
-import java.io.File;
 import java.net.InetAddress;
-import java.util.Collections;
 import java.util.Map;
+
 import org.apache.catalina.Connector;
 import org.apache.catalina.Container;
-import org.apache.catalina.Context;
 import org.apache.catalina.Engine;
-import org.apache.catalina.LifecycleException;
 import org.apache.catalina.Lifecycle;
-import org.apache.catalina.Loader;
+import org.apache.catalina.LifecycleException;
 import org.apache.catalina.Server;
 import org.apache.catalina.Service;
 import org.apache.catalina.connector.http.HttpConnector;
-import org.apache.catalina.net.ServerSocketFactory;
 import org.apache.catalina.net.SSLServerSocketFactory;
+import org.apache.catalina.net.ServerSocketFactory;
 import org.apache.catalina.startup.Catalina;
 import org.apache.catalina.util.xml.XmlMapper;
 

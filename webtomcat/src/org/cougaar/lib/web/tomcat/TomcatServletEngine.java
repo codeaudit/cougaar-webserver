@@ -21,24 +21,19 @@
 package org.cougaar.lib.web.tomcat;
 
 import java.io.File;
-import java.io.IOException;
 import java.net.BindException;
-import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.SocketException;
-import java.net.URL;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import javax.servlet.*;
-import javax.servlet.http.*;
-import javax.servlet.jsp.JspFactory;
- 
-// will implement "ServletEngine":
-import org.cougaar.lib.web.arch.server.*;
 
-// using Tomcat 4.0
+import javax.servlet.Servlet;
+import javax.servlet.ServletException;
+import javax.servlet.jsp.JspFactory;
+
 import org.apache.catalina.LifecycleException;
+import org.cougaar.lib.web.arch.server.ServletEngine;
 
 /**
  * Implementation of <code>ServletEngine</code> for Tomcat 4.0.3.

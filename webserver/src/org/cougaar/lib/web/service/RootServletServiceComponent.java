@@ -21,8 +21,6 @@
 package org.cougaar.lib.web.service;
 
 import java.io.File;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.net.BindException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -32,14 +30,14 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+
 import javax.servlet.Servlet;
+
 import org.cougaar.bootstrap.SystemProperties;
 import org.cougaar.core.component.BindingSite;
 import org.cougaar.core.component.Component;
 import org.cougaar.core.component.ServiceBroker;
 import org.cougaar.core.component.ServiceProvider;
-import org.cougaar.core.component.ServiceRevokedListener;
-import org.cougaar.core.mts.MessageAddress;
 import org.cougaar.core.node.NodeControlService;
 import org.cougaar.core.node.NodeIdentificationService;
 import org.cougaar.core.service.LoggingService;
@@ -51,7 +49,6 @@ import org.cougaar.lib.web.arch.root.RootRedirectServlet;
 import org.cougaar.lib.web.arch.root.RootServlet;
 import org.cougaar.lib.web.arch.root.RootServletRegistry;
 import org.cougaar.lib.web.arch.server.ServletEngine;
-import org.cougaar.util.GenericStateModelAdapter;
 import org.cougaar.util.Parameters;
 
 /**

@@ -21,15 +21,14 @@
 package org.cougaar.lib.web.arch.root;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+
 import javax.servlet.Servlet;
-import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
 import javax.servlet.SingleThreadModel;
+
 import org.cougaar.lib.web.arch.ServletRegistry;
 import org.cougaar.lib.web.arch.util.DummyServletConfig;
 import org.cougaar.lib.web.arch.util.SynchronizedServlet;

@@ -23,17 +23,18 @@
  */
 package org.cougaar.lib.web.tomcat;
 
-import java.lang.reflect.Method;
 import java.io.IOException;
+import java.lang.reflect.Method;
+
 import javax.servlet.ServletException;
 
-import org.apache.catalina.Valve;
-import org.apache.catalina.valves.ValveBase;
 import org.apache.catalina.Contained;
 import org.apache.catalina.Container;
-import org.apache.catalina.ValveContext;
 import org.apache.catalina.Request;
 import org.apache.catalina.Response;
+import org.apache.catalina.Valve;
+import org.apache.catalina.ValveContext;
+import org.apache.catalina.valves.ValveBase;
 
 /**
  * A Valve for Tomcat 4.0 that will use

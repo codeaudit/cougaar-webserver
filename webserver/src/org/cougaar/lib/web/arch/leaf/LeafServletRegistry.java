@@ -21,10 +21,11 @@
 package org.cougaar.lib.web.arch.leaf;
 
 import java.util.List;
+
 import javax.servlet.Servlet;
-import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
 import javax.servlet.SingleThreadModel;
+
 import org.cougaar.lib.web.arch.ServletRegistry;
 import org.cougaar.lib.web.arch.util.DummyServletConfig;
 import org.cougaar.lib.web.arch.util.PrefixTable;

@@ -22,10 +22,8 @@ package org.cougaar.lib.web.arch.util;
 
 import java.io.InputStream;
 import java.net.URL;
-import java.util.Collections;
 import java.util.Enumeration;
-import java.util.NoSuchElementException;
-import java.util.Set;
+
 import javax.servlet.RequestDispatcher;
 import javax.servlet.Servlet;
 import javax.servlet.ServletConfig;
