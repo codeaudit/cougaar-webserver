@@ -33,10 +33,8 @@ import java.util.Set;
 import org.cougaar.util.log.Logging;
 import org.cougaar.util.log.Logger;
 import org.cougaar.core.service.wp.AddressEntry;
-import org.cougaar.core.service.wp.Application;
 import org.cougaar.core.service.wp.Callback;
 import org.cougaar.core.service.wp.Response;
-import org.cougaar.core.service.wp.Cert;
 import org.cougaar.core.service.wp.WhitePagesService;
 import org.cougaar.lib.web.arch.root.GlobalRegistry;
 
@@ -50,9 +48,6 @@ public class NamingServerRegistry
 implements GlobalRegistry {
 
   private static final Logger logger = Logging.getLogger(NamingServerRegistry.class);
-
-  private static final Application APP = 
-    Application.getApplication("servlet");
 
   private final WhitePagesService wp;
 
@@ -92,12 +87,8 @@ implements GlobalRegistry {
           encName);
       String rawName = decode(encName);
       AddressEntry httpEntry =
-        new AddressEntry(
-            rawName,
-            APP,
-            httpURI,
-            Cert.NULL,
-            Long.MAX_VALUE);
+        AddressEntry.getAddressEntry(
+            rawName, "http", httpURI);
       try {
         Callback callback = new Callback() {
             public void execute(Response res) {
@@ -127,12 +118,8 @@ implements GlobalRegistry {
         encName);
       String rawName = decode(encName);
       AddressEntry httpsEntry =
-        new AddressEntry(
-            rawName,
-            APP,
-            httpsURI,
-            Cert.NULL,
-            Long.MAX_VALUE);
+        AddressEntry.getAddressEntry(
+            rawName, "https", httpsURI);
       try {
         Callback callback = new Callback() {
             public void execute(Response res) {
@@ -167,12 +154,8 @@ implements GlobalRegistry {
       URI httpURI = URI.create("http://ignored");
       String rawName = decode(encName);
       AddressEntry httpEntry =
-        new AddressEntry(
-            rawName,
-            APP,
-            httpURI,
-            Cert.NULL,
-            Long.MAX_VALUE);
+        AddressEntry.getAddressEntry(
+            rawName, "http", httpURI);
       try {
         wp.unbind(httpEntry);
       } catch (Exception e) {
@@ -184,12 +167,8 @@ implements GlobalRegistry {
       URI httpsURI = URI.create("https://ignored");
       String rawName = decode(encName);
       AddressEntry httpsEntry =
-        new AddressEntry(
-            rawName,
-            APP,
-            httpsURI,
-            Cert.NULL,
-            Long.MAX_VALUE);
+        AddressEntry.getAddressEntry(
+            rawName, "https", httpsURI);
       try {
         wp.unbind(httpsEntry);
       } catch (Exception e) {
@@ -210,27 +189,14 @@ implements GlobalRegistry {
     }
 
     String rawName = decode(encName);
-    AddressEntry[] a;
+    AddressEntry ae;
     try {
-      a = wp.get(rawName);
+      ae = wp.get(rawName, scheme);
     } catch (Exception e) {
       throw new RuntimeException(
           "Unable to get("+rawName+")", e);
     }
-
-    // extract matching app/scheme
-    URI uri = null;
-    for (int i = 0; i < a.length; i++) {
-      AddressEntry ai = a[i];
-      if (APP.equals(ai.getApplication())) {
-        URI ui = ai.getAddress();
-        String si = ui.getScheme();
-        if (scheme.equals(si)) {
-          uri = ui;
-          break;
-        }
-      }
-    }
+    URI uri = (ae == null ? null : ae.getURI());
 
     return uri;
   }
