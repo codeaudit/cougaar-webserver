@@ -44,15 +44,21 @@ import org.cougaar.lib.web.arch.ServletRegistry;
  *   <li>"/agents[?args]"<br>
  *       Lists agent names.  The supported URL-parameter 
  *       arguments are:<ul>
- *         <li>"?local" -- local list of agent names 
+ *         <li>"?scope=local" -- local list of agent names 
  *             (default)</li>
- *         <li>"?all"   -- global list of all agent 
- *             names (instead of "?local")</li>
- *         <li>"?html"  -- generate a pretty html 
+ *         <li>"?scope=all"   -- global list of all agent 
+ *             names (instead of "?scope=local")</li>
+ *         <li>"?format=html" -- generate a pretty html 
  *             page (default)</li>
- *         <li>"?text   -- generate plain text, one agent
- *             name per line (instead of "?html")</li>
- *       </ul>
+ *         <li>"?format=text  -- generate plain text, one agent
+ *             name per line (instead of "?format=html")</li>
+ *         <li>"?sorted=true  -- sort the names in alphabetical 
+ *             order (default)</li>
+ *         <li>"?sorted=false" -- don't sort the names into
+ *             alphabetical order (instead of "?sorted=true")</li>
+ *       </ul><p>
+ *       For example: "/agents?scope=all&amp;format=text"
+ *       <p>
  *       Note this nice feature: With the normal "/$name" 
  *       redirects and this "/agents" support, the client 
  *       can request "/$name/agents" to list all 
@@ -152,7 +158,7 @@ implements Servlet {
       "<a href=\"http://www.cougaar.org\">Cougaar</a></h2>\n"+
       "Options:<ul>\n"+
       "<li><a href=\"/agents\">List local agents</a></li>\n"+
-      "<li><a href=\"/agents?all\">List all agents</a></li>\n"+
+      "<li><a href=\"/agents?scope=all\">List all agents</a></li>\n"+
       "</ul>\n"+
       "</body></html>");
     out.close();
@@ -166,21 +172,41 @@ implements Servlet {
     boolean listLocals = true;
     // html v.s. plain-text response
     boolean useHtml = true;
+    // sorted v.s. unsorted response
+    boolean sorted = true;
 
     // scan url-parameters for:
-    //  "?all", "?text", "?local", "?html"
-    for (Enumeration en = req.getParameterNames();
-        en.hasMoreElements();
+    //   "?scope=[all|local]"
+    //   "?format=[text|html]"
+    //   "?sorted=[true|false]"
+    for (Iterator iter = req.getParameterMap().entrySet().iterator();
+        iter.hasNext();
         ) {
-      String pName = (String) en.nextElement();
-      if ("all".equals(pName)) {
-        listLocals = false;
-      } else if ("text".equals(pName)) {
-        useHtml = false;
-      } else if ("local".equals(pName)) {
-        listLocals = true;
-      } else if ("html".equals(pName)) {
-        useHtml = true;
+      Map.Entry me = (Map.Entry) iter.next();
+      String pName = (String) me.getKey();
+      String[] pValues = (String[]) me.getValue();
+      if ((pValues == null) || (pValues.length <= 0)) {
+        continue;
+      }
+      String pValue = pValues[0];
+      if ("scope".equals(pName)) {
+        if ("local".equals(pValue)) {
+          listLocals = true;
+        } else if ("all".equals(pValue)) {
+          listLocals = false;
+        }
+      } else if ("format".equals(pName)) {
+        if ("html".equals(pValue)) {
+          useHtml = true;
+        } else if ("text".equals(pValue)) {
+          useHtml = false;
+        }
+      } else if ("sorted".equals(pName)) {
+        if ("true".equals(pValue)) {
+          sorted = true;
+        } else if ("false".equals(pValue)) {
+          sorted = false;
+        }
       }
     }
 
@@ -195,6 +221,10 @@ implements Servlet {
        localReg.listNames() :
        globReg.listNames());
     int n = ((names != null) ? names.size() : 0);
+
+    if (sorted && (n > 0)) {
+      Collections.sort(names);
+    }
 
     if (!(useHtml)) {
       // simple line-by-line output
@@ -238,7 +268,7 @@ implements Servlet {
         out.print(
             "<p>\n"+
             "<h2>"+
-            "<a href=\"/agents?all\">List all agents</a>"+
+            "<a href=\"/agents?scope=all\">List all agents</a>"+
             "</h2>\n");
       }
       out.print("</body></html>");
