@@ -56,6 +56,17 @@ implements Serializable {
     }
   }
 
+  /**
+   * Create a new HTTP config that is identical to the
+   * given <tt>old</tt> HttpConfig, but replace the
+   * <tt>old.getPort()</tt> with the given <tt>port</tt>.
+   */
+  public HttpConfig(
+      HttpConfig old,
+      int port) {
+    this(old.getAddress(), port);
+  }
+
   public InetAddress getAddress() {
     return addr;
   }

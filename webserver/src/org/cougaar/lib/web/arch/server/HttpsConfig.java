@@ -107,6 +107,23 @@ implements Serializable {
   }
 
   /**
+   * Create a new HTTPS config that is identical to the
+   * given <tt>old</tt> HttpsConfig, but replace the
+   * <tt>old.getHttpConfig.getPort()</tt> with the given <tt>port</tt>.
+   */
+  public HttpsConfig(
+      HttpsConfig old,
+      int port) {
+    this(
+        new HttpConfig(old.httpConfig, port),
+        old.clientAuth,
+        old.serverKeystore,
+        old.serverKeypass,
+        old.serverKeyname,
+        old.trustKeystore);
+  }
+
+  /**
    * This contains the basic host:port information.
    */
   public HttpConfig getHttpConfig() {
