@@ -2,7 +2,7 @@
 <head>
 <title>Servlet server install guide</title>
 </head>
-<body>
+<body bgcolor="white">
 <p>
 <center><h1>Servlet server install guide</h1></center>
 <p>
@@ -152,8 +152,8 @@ where the loader is:
 </pre><br>
 For build 8.6.2 there are only two example Servlet <b><i>&lt;classname&gt;</i></b>s:
 <pre>
-   org.cougaar.domain.planning.servlet.PlanViewServlet      <i>(/tasks)</i> <a name="#tasks">
-   org.cougaar.domain.mlm.ui.psp.transit.CompletionServlet  <i>(/completion)</i>
+   org.cougaar.domain.planning.servlet.PlanViewServlet      <i>(/tasks)</i> <a name="tasks">
+   org.cougaar.domain.mlm.ui.psp.transit.CompletionServlet  <i>(/completion)</i><a name="completion">
 </pre><br>
 So these two lines must be added to the ".ini" files:
 <pre>
@@ -224,9 +224,9 @@ to list the running Servlets.  You should see three entries:
     2./$FOO/list 
 </pre></br>
 <p>
-The "/tasks" Servlet allows the user to examine the Agent's 
-Blackboard, and the "/completion" Servlet provides a planning 
-status summary.
+The <a href="#tasks">"/tasks"</a> Servlet allows the user to examine 
+an Agent's Blackboard, and the <a href="#completion">"/completion"</a>
+Servlet provides a per-Agent planning status summary.
 <p>
 To try the HTTPS support:
 <pre>
