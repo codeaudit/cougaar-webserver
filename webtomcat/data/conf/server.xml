@@ -11,7 +11,12 @@
 
 <Server>
 
-    <ContextManager workDir="work" >
+    <!-- 
+        Modify "showDebugInfo" to "false" to hide server 
+        printing of stack-traces from remote clients 
+        (e.g. if a servlet throws an Exception)
+      -->
+    <ContextManager workDir="work" showDebugInfo="true">
 
         <!-- 
             Do NOT alter this ordering! 
