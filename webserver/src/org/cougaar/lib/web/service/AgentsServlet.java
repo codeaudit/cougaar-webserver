@@ -77,8 +77,17 @@ import org.cougaar.lib.web.arch.root.GlobalRegistry;
  * and this "/agents" support, the client can request
  * "/$name/agents" to list all co-located agents, regardless of
  * where the named agent happens to be located.
+ *
+ * @property org.cougaar.lib.web.list.timeout
+ *   Timeout in millseconds for white pages listings, where 0
+ *   indicates no timeout.  Defaults to 0.
  */
 public class AgentsServlet implements Servlet {
+
+  private static final long LIST_TIMEOUT =
+    Long.getLong(
+        "org.cougaar.lib.web.list.timeout",
+        0).longValue();
 
   // read-only registries:
   private final ServletRegistry localReg;
@@ -155,10 +164,21 @@ public class AgentsServlet implements Servlet {
 
     // get the listing
     Collection names;
-    if (isLocal) {
+    if (useInput) {
+      names = null;
+    } else if (isLocal) {
       names = localReg.listNames();
     } else {
-      names = globReg.list(encSuffix);
+      try {
+        names = globReg.list(encSuffix, LIST_TIMEOUT);
+      } catch (Exception e) {
+        names = null;
+        if (useSelect) {
+          // use input field instead of drop-down list
+          useSelect = false;
+          useInput = true;
+        }
+      }
     }
     if (names == null) {
       names = Collections.EMPTY_LIST;
@@ -182,7 +202,7 @@ public class AgentsServlet implements Servlet {
     if (!(useHtml)) {
       listPlain(out, names);
     } else if (useInput) {
-      listInput(out, names, encSuffix, encName, isLocal);
+      listInput(out, encSuffix, encName, isLocal);
     } else if (useSelect) {
       if (isLocal) {
         listSelectLocal(out, names, encSuffix);
@@ -214,7 +234,6 @@ public class AgentsServlet implements Servlet {
 
   private static final void listInput(
       PrintWriter out,
-      Collection names,
       String encSuffix,
       String encName,
       boolean isLocal) {

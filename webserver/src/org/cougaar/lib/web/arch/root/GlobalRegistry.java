@@ -80,11 +80,11 @@ public interface GlobalRegistry {
    *
    * @throws IOException if some low-level IO error has occurred
    */
-  URI get(String encName, String scheme) throws IOException;
+  URI get(String encName, String scheme, long timeout) throws IOException;
 
   /**
    * Fetch all encoded names with the given suffix.
    */
-  Set list(String encSuffix) throws IOException;
+  Set list(String encSuffix, long timeout) throws IOException;
 
 }

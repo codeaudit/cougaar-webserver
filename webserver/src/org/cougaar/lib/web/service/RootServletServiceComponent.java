@@ -39,7 +39,9 @@ import org.cougaar.core.component.Component;
 import org.cougaar.core.component.ServiceBroker;
 import org.cougaar.core.component.ServiceProvider;
 import org.cougaar.core.component.ServiceRevokedListener;
+import org.cougaar.core.mts.MessageAddress;
 import org.cougaar.core.node.NodeControlService;
+import org.cougaar.core.node.NodeIdentificationService;
 import org.cougaar.core.service.LoggingService;
 import org.cougaar.core.service.ServletService;
 import org.cougaar.core.service.wp.WhitePagesService;
@@ -71,6 +73,10 @@ import org.cougaar.util.Parameters;
  * <p>
  * 
  * <pre>
+ * @property org.cougaar.lib.web.redirect.timeout
+ *   Timeout in millseconds for "/$" remote redirect lookups, where
+ *   0 indicates no timeout.  Defaults to 0.
+ * 
  * @property org.cougaar.lib.web.server.classname
  *   Classname for ServletEngine.  Defaults to Tomcat.
  *
@@ -136,6 +142,8 @@ implements Component
 
   private LoggingService log;
 
+  private String localNode;
+
   // used to create the "rootReg"
   private WhitePagesService wp;
 
@@ -143,6 +151,7 @@ implements Component
 
   // from initialize
   private List initList;
+  private long redirectTimeout;
   private String serverClassname;
   private Object serverArg;
   private int scanRange;
@@ -194,6 +203,7 @@ implements Component
 
     // set defaults
     m.put("debug", Boolean.toString(log.isDebugEnabled()));
+    m.put("redirect.timeout", "0");
     m.put("scanRange", "100");
     m.put(
         "server.classname", 
@@ -263,6 +273,8 @@ implements Component
     }
 
     // extract our parameters
+    this.redirectTimeout =
+      Long.parseLong((String) m.get("redirect.timeout"));
     this.serverClassname = (String) m.get("server.classname");
     this.serverArg = (String) m.get("server.arg");
     this.scanRange = Integer.parseInt((String) m.get("scanRange"));
@@ -287,6 +299,12 @@ implements Component
     if (log == null) {
       log = LoggingService.NULL;
     }
+
+    // which agent are we in?
+    NodeIdentificationService nis = (NodeIdentificationService)
+      sb.getService(this, NodeIdentificationService.class, null);
+    localNode = nis.getMessageAddress().getAddress();
+    sb.releaseService(this, NodeIdentificationService.class, nis);
 
     configureParameters();
 
@@ -438,10 +456,12 @@ implements Component
     Servlet remoteNameServlet = 
       new RootRedirectServlet(
           globReg,
-          unknownNameServlet);
+          unknownNameServlet,
+          redirectTimeout);
     RootServlet rootServlet = 
       new RootServlet(
           rootReg, 
+          localNode,
           noNameServlet, 
           noNameServlet, 
           remoteNameServlet);

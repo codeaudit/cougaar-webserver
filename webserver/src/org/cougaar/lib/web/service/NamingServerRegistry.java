@@ -133,7 +133,7 @@ implements GlobalRegistry {
             }
           };
 
-        wp.rebind(httpsEntry);
+        wp.rebind(httpsEntry, callback);
       } catch (Exception e) {
         throw new RuntimeException(
             "Unable to rebind("+httpsEntry+")", e);
@@ -178,7 +178,10 @@ implements GlobalRegistry {
     }
   }
 
-  public URI get(final String encName, final String scheme) throws IOException {
+  public URI get(
+      final String encName,
+      final String scheme,
+      final long timeout) throws IOException {
     // check the url-encoded name
     if (encName == null || encName.length() == 0) {
       return null;
@@ -191,7 +194,7 @@ implements GlobalRegistry {
     String rawName = decode(encName);
     AddressEntry ae;
     try {
-      ae = wp.get(rawName, scheme);
+      ae = wp.get(rawName, scheme, timeout);
     } catch (Exception e) {
       throw new RuntimeException(
           "Unable to get("+rawName+")", e);
@@ -201,11 +204,13 @@ implements GlobalRegistry {
     return uri;
   }
 
-  public Set list(String encSuffix) throws IOException {
+  public Set list(
+      String encSuffix,
+      long timeout) throws IOException {
     String rawSuffix = decode(encSuffix);
     Set s;
     try {
-      s = wp.list(rawSuffix);
+      s = wp.list(rawSuffix, timeout);
     } catch (Exception e) {
       throw new RuntimeException(
           "Unable to list("+rawSuffix+")", e);

@@ -22,6 +22,7 @@ package org.cougaar.lib.web.tomcat;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.BindException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.SocketException;
@@ -186,7 +187,7 @@ public class TomcatServletEngine
     return isRunning;
   }
 
-  public void start() throws SocketException {
+  public void start() throws BindException {
 
     if (isRunning()) {
       throw new IllegalStateException(
@@ -258,7 +259,11 @@ public class TomcatServletEngine
             ((msg.indexOf("Address already in use") >= 0) ||
              (msg.indexOf("Address in use") >= 0))) {
           // port is already in use
-          throw se;
+          if (se instanceof BindException) {
+            throw (BindException) se;
+          } else {
+            throw new BindException(msg);
+          }
         }
       }
       throw new RuntimeException(

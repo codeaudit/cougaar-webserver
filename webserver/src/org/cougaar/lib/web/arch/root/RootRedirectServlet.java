@@ -45,12 +45,15 @@ implements Servlet {
 
   protected final GlobalRegistry globReg;
   protected final Servlet unknownNameServlet;
+  protected final long timeout;
 
   public RootRedirectServlet(
       GlobalRegistry globReg,
-      Servlet unknownNameServlet) {
+      Servlet unknownNameServlet,
+      long timeout) {
     this.globReg = globReg;
     this.unknownNameServlet = unknownNameServlet;
+    this.timeout = timeout;
 
     // null-check
     if (globReg == null) {
@@ -84,21 +87,26 @@ implements Servlet {
       HttpServletRequest req,
       HttpServletResponse res) throws ServletException, IOException {
 
-    // get the "/$encName[/.*]"
+    // get the "/$[~]encName[/.*]"
     String path = req.getRequestURI();
     // assert ((path != null) && (path.startsWith("/$")))
-    int sepIdx = path.indexOf('/', 2);
+    int startIdx = 2; 
+    if (startIdx < path.length() &&
+        path.charAt(startIdx) == '~') {
+      startIdx++;
+    }
+    int sepIdx = path.indexOf('/', startIdx);
     if (sepIdx < 0) {
       sepIdx = path.length();
     }
-    String encName = path.substring(2, sepIdx);
+    String encName = path.substring(startIdx, sepIdx);
 
     String scheme = req.getScheme();
 
     // find the URI for this url-encoded name
     URI uri;
     try {
-      uri = globReg.get(encName, scheme);
+      uri = globReg.get(encName, scheme, timeout);
     } catch (Exception e) {
       // generate error response
       res.sendError(

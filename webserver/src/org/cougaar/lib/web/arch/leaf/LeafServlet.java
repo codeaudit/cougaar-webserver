@@ -102,8 +102,15 @@ implements Servlet {
     // get the path
     String path = hreq.getRequestURI();
 
+    // look for "/$[~]name[/innerPath]"
+    int i = path.indexOf('/', 2);
+    if (i < 0) {
+      i = path.length();
+    }
+    String innerPath = path.substring(i);
+
     // find the matching servlet
-    Object o = servletReg.get(path);
+    Object o = servletReg.get(innerPath);
     Servlet servlet;
     String pathInfo = null;
     String servletPath = path;

@@ -144,7 +144,7 @@ implements Servlet {
       "Options:<ul>\n"+
       "<li><a href=\"/agents\">Agents on host ("+
       req.getServerName()+":"+req.getServerPort()+
-      ")</a></li>\n"+
+      ")</a></li><p>\n"+
       "<li><a href=\"/agents?suffix=.\">Agents at the root (.)</a>"+
       "</li>\n"+
       "</ul>\n"+
@@ -169,7 +169,7 @@ implements Servlet {
 
     // get the listing of all local names
     List localNames = localReg.listNames();
-    int n = ((localNames != null) ? localNames.size() : 0);
+    int n = (localNames == null ? 0 : localNames.size());
     if (n <= 0) {
       res.sendError(
           HttpServletResponse.SC_NOT_FOUND, 
@@ -189,9 +189,7 @@ implements Servlet {
       "/$"+
       randName+
       trimPath+
-      ((queryString != null) ? 
-       ("?"+queryString) :
-       (""));
+      (queryString == null ? "" : ("?"+queryString));
 
     // encode for redirect -- typically a no-op
     location = res.encodeRedirectURL(location);

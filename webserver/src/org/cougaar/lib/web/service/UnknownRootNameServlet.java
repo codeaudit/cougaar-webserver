@@ -34,7 +34,7 @@ import org.cougaar.lib.web.arch.ServletRegistry;
 
 /**
  * A servlet that displays an error message when an unknown
- * root name ("/$name") is requested.
+ * root name ("/$[~]name") is requested.
  * <p>
  * This is somewhat similar to the <code>ListRegistryServlet</code>.
  */
@@ -81,7 +81,7 @@ implements Servlet {
     res.addHeader("Cougaar-error", "agent");
     PrintWriter out = res.getWriter();
 
-    // get the "/$name[/.*]"
+    // get the "/$[~]name[/.*]"
     String path = req.getRequestURI();
     String name;
     String trimPath;
@@ -104,28 +104,24 @@ implements Servlet {
     int n = ((localNames != null) ? localNames.size() : 0);
 
     String queryString = req.getQueryString();
-    queryString = 
-      ((queryString != null) ?
-       ("?"+queryString) :
-       (""));
+    queryString = (queryString == null ? "" : "?"+queryString);
+
+    // put the name at the front of the title, in case this page is
+    // displayed in a tiny frame.
+    String title = "\""+ name+"\" Not Found"; 
 
     out.print(
-        "<html><head><title>Unknown Agent name: \""+
-        name+
-        "\"</title></head>\n"+
-        "<body><p><h1>Unknown Agent name: \""+
-        name+
-        "\"</h1>\n"+
+        "<html><head><title>"+
+        title+
+        "</title></head>\n"+
+        "<body><p><h1>"+
+        title+
+        "</h1>\n"+
         "<p>Local agents:<ol>\n");
     for (int i = 0; i < n; i++) {
       String ni = (String) localNames.get(i);
       String li = "/$"+ni+trimPath+queryString;
-      out.print(
-          "<li><a href=\""+
-          li+
-          "\">"+
-          li+
-          "</a></li>\n");
+      out.print("<li><a href=\""+li+"\">"+li+"</a></li>\n");
     }
     out.print("</ol></body></html>");
 

@@ -40,6 +40,18 @@ import javax.servlet.http.HttpServletResponse;
 public class UnknownLeafPathServlet 
 implements Servlet {
 
+  private final String realName;
+
+  public UnknownLeafPathServlet(
+      String realName) {
+    this.realName = realName;
+    //
+    String s = (realName == null ? "realName" : null);
+    if (s != null) {
+      throw new IllegalArgumentException("null "+s);
+    }
+  }
+
   public void service(
       ServletRequest req,
       ServletResponse res) throws ServletException, IOException {
@@ -85,23 +97,29 @@ implements Servlet {
       String name) throws ServletException, IOException {
     res.setContentType("text/html");
     PrintWriter out = res.getWriter();
+
+    String title =
+      "Agent \""+
+      name+
+      "\""+
+      (name.equals(realName) ? "" : (" ("+realName+")"));
+
     out.print(
       "<html><head><title>"+
-      "Agent "+
-      name+
+      title+
       "</title></head><body>\n"+
-      "<h2>Agent "+
-      name+
+      "<h2>"+
+      title+
       "</h2>\n"+
       "Options:<ul>\n"+
       "<li><a href=\"/$"+
       name+
       "/list\">List paths in agent \""+
       name+
-      "\"</a></li>\n"+
+      "\"</a></li><p>\n"+
       "<li><a href=\"/agents\">List agents co-located with agent \""+
       name+
-      "\"</a></li>\n"+
+      "\"</a></li><p>\n"+
       "<li><a href=\"/agents?scope=all\">List all agents</a></li>\n"+
       "</ul>\n"+
       "</body></html>");
@@ -123,12 +141,15 @@ implements Servlet {
     res.addHeader("Cougaar-error", "path");
     PrintWriter out = res.getWriter();
 
+    // put the path at the front of the title, in case this page is
+    // displayed in a tiny frame.
     String title = 
-      "Unknown Servlet Path \""+
+      "\""+
       path+
-      "\" within Agent \""+
+      "\" Not Found on Agent \""+
       name+
-      "\"";
+      "\""+
+      (name.equals(realName) ? "" : (" ("+realName+")"));
 
     out.print(
         "<html><head><title>"+
@@ -142,10 +163,10 @@ implements Servlet {
         name+
         "/list\">List paths in agent \""+
         name+
-        "\"</a></li>\n"+
+        "\"</a></li><p>\n"+
         "<li><a href=\"/agents\">List agents co-located with agent \""+
         name+
-        "</a></li>\n"+
+        "\"</a></li><p>\n"+
         "<li><a href=\"/agents?scope=all\">List all agents</a></li>\n"+
         "</ul>\n"+
         "</body></html>");

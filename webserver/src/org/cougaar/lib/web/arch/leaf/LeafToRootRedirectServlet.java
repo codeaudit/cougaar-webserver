@@ -30,7 +30,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 /**
- * A servlet that redirects "/$name/foo" to "/foo".
+ * A servlet that redirects "/$[~]name/foo" to "/foo".
  * <p>
  * This can be used to a bounce a leaf-level request back to 
  * the root-level, assuming that the request is (logically) for
@@ -39,7 +39,7 @@ import javax.servlet.http.HttpServletResponse;
  * to rely upon redirects.  In other words, if leaf "X" is 
  * configured to bounce "/foo" back to the root, it allows the 
  * user to easily phrase:<pre>
- *    "Wherever <i>/$name</i> happens to be right now, 
+ *    "Wherever <i>/$[~]name</i> happens to be right now, 
  *     invoke <i>/foo</i> to its root"
  * </pre>
  * <p>
@@ -73,7 +73,7 @@ implements Servlet {
       HttpServletRequest httpReq,
       HttpServletResponse httpRes) throws ServletException, IOException {
 
-    // get the "/$name[/.*]"
+    // get the "/$[~]name[/.*]"
     String path = httpReq.getRequestURI();
     // assert ((path != null) && (path.startsWith("/$")))
     int sepIdx = path.indexOf('/', 2);

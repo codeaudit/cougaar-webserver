@@ -57,10 +57,21 @@ implements Servlet {
 
   // read-only registry
   private final ServletRegistry reg;
+  private final String realName;
 
   public ListRegistryServlet(
-      ServletRegistry reg) {
+      ServletRegistry reg,
+      String realName) {
     this.reg = reg;
+    this.realName = realName;
+    //
+    String s = 
+      (reg == null ? "reg" :
+       realName == null ? "realName" :
+       null);
+    if (s != null) {
+      throw new IllegalArgumentException("null "+s);
+    }
   }
 
   public void service(
@@ -86,38 +97,11 @@ implements Servlet {
       HttpServletRequest req,
       HttpServletResponse res) throws ServletException, IOException {
 
-    // html v.s. plain-text response
-    boolean useHtml = true;
-    // sorted v.s. unsorted response
-    boolean sorted = true;
-
     // scan url-parameters for:
     //   "?format=[text|html]"
     //   "?sorted=[true|false]"
-    for (Iterator iter = req.getParameterMap().entrySet().iterator();
-        iter.hasNext();
-        ) {
-      Map.Entry me = (Map.Entry) iter.next();
-      String pName = (String) me.getKey();
-      String[] pValues = (String[]) me.getValue();
-      if ((pValues == null) || (pValues.length <= 0)) {
-        continue;
-      }
-      String pValue = pValues[0];
-      if ("format".equals(pName)) {
-        if ("html".equals(pValue)) {
-          useHtml = true;
-        } else if ("text".equals(pValue)) {
-          useHtml = false;
-        }
-      } else if ("sorted".equals(pName)) {
-        if ("true".equals(pValue)) {
-          sorted = true;
-        } else if ("false".equals(pValue)) {
-          sorted = false;
-        }
-      }
-    }
+    boolean useHtml = !("text".equals(req.getParameter("format")));
+    boolean sorted = !("false".equals(req.getParameter("sorted")));
 
     // get the "/$name[/.*]"
     String path = req.getRequestURI();
@@ -141,28 +125,34 @@ implements Servlet {
     PrintWriter out = res.getWriter();
 
     if (useHtml) {
-      out.print("<html><head><title>List of \"");
-      out.print(name);
+      String title =
+        "List of \""+
+        name+
+        "\""+
+        (name.equals(realName) ? "" : (" ("+realName+")"))+
+        " Servlets";
       out.print(
-          "\" Servlets</title></head>\n"+
-          "<body><p><h1>List of \"");
-      out.print(name);
-      out.print(
-          "\" Servlets</h1>\n"+
+          "<html><head><title>"+
+          title+
+          "</title></head>\n"+
+          "<body><p><h1>"+
+          title+
+          "</h1>\n"+
           "<p><ol>\n");
       for (int i = 0; i < n; i++) {
         String pi = (String) pathList.get(i);
-        out.print("<li><a href=\"");
-        out.print(pi);
-        out.print("\">");
-        out.print(pi);
-        out.print("</a></li>\n");
+        out.print(
+            "<li><a href=\"/$"+
+            name+pi+
+            "\">/$"+
+            name+pi+
+            "</a></li>\n");
       }
       out.print("</ol></body></html>\n");
     } else {
       for (int i = 0; i < n; i++) {
         String pi = (String) pathList.get(i);
-        out.println(pi);
+        out.println("/$"+name+pi);
       }
     }
     out.close();

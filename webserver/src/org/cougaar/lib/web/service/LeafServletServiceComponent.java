@@ -29,6 +29,8 @@ import org.cougaar.core.component.Component;
 import org.cougaar.core.component.ServiceBroker;
 import org.cougaar.core.component.ServiceProvider;
 import org.cougaar.core.component.ServiceRevokedListener;
+import org.cougaar.core.mts.MessageAddress;
+import org.cougaar.core.service.AgentIdentificationService;
 import org.cougaar.core.service.ServletService;
 import org.cougaar.lib.web.arch.ServletRegistry;
 import org.cougaar.lib.web.arch.leaf.LeafServlet;
@@ -56,10 +58,7 @@ implements Component
 {
   private ServiceBroker sb;
 
-  // from parameter:
-  private String rawName;
   private String encName;
-
   private ServletService rootServletService;
   private LeafServletServiceProviderImpl leafSP;
 
@@ -68,32 +67,33 @@ implements Component
     this.sb = bs.getServiceBroker();
   }
 
-  /**
-   * Expecting a single String for the leaf's raw name.
-   */
   public void setParameter(Object o) {
-    if (!(o instanceof String)) {
-      throw new IllegalArgumentException(
-          "Expecting a \"String\" parameter, not \""+
-          ((o != null) ? o.getClass().getName() : "null")+
-          "\"");
-    }
-    this.rawName = (String) o;
-
-    // The raw name is encoded for HTTP safety.
-    //
-    // This is done to protect raw-names such as "x y",
-    // which would produce invalid "../$x y/.." URLs.
-    try {
-      this.encName = java.net.URLEncoder.encode(rawName, "UTF-8");
-    } catch (Exception e) {
-      throw new IllegalArgumentException(
-          "Illegal name \""+rawName+"\": "+e.getMessage());
-    }
+    // ignore old-style passing of the "encName"
   }
 
   public void load() {
     super.load();
+
+    // get our agent's name
+    AgentIdentificationService ais = (AgentIdentificationService)
+      sb.getService(this, AgentIdentificationService.class, null);
+    if (ais == null) {
+      throw new RuntimeException(
+          "Unable to obtain the agent identification service");
+    }
+    MessageAddress addr = ais.getMessageAddress();
+    sb.releaseService(this, AgentIdentificationService.class, ais);
+
+    // encode the agent name for HTTP safety.
+    //
+    // This is done to protect raw-names such as "x y",
+    // which would produce invalid "../$x y/.." URLs.
+    try {
+      String rawName = addr.getAddress();
+      this.encName = URLEncoder.encode(rawName, "UTF-8");
+    } catch (Exception e) {
+      throw new RuntimeException("Invalid name \""+addr+"\"", e);
+    }
 
     // get the (root) servlet service
     if (rootServletService == null) {
@@ -167,7 +167,7 @@ implements Component
       this.leafReg = 
         new LeafServletRegistry();
       Servlet unknownPathServlet = 
-        new UnknownLeafPathServlet();
+        new UnknownLeafPathServlet(encName);
       this.leafServlet = 
         new LeafServlet(
             leafReg, 
@@ -182,7 +182,8 @@ implements Component
       try {
         Servlet listServlet = 
           new ListRegistryServlet(
-              leafReg);
+              leafReg,
+              encName);
         ss.register("/list", listServlet);
       } catch (Exception e) {
         // shouldn't happen
@@ -280,36 +281,35 @@ implements Component
         // simultaneously register and unregister a Servlet...
         private final List l = new ArrayList(3);
 
-        /** prefix the path with the "/$encName". */
-        private String prefixPath(String path) {
-          path = path.trim();
-          if (path.length() <= 1) {
+        private String trimPath(String path) {
+          String p = path.trim();
+          if (p.length() <= 1) {
             throw new IllegalArgumentException(
                 "Must specify a non-empty path, not \""+path+"\"");
           }
-          if (path.charAt(0) != '/') {
+          if (p.charAt(0) != '/') {
             throw new IllegalArgumentException(
                 "Path \""+path+"\" must start with \"/\"");
           }
-          return "/$"+encName+path;
+          return p;
         }
 
         public void register(
             String path,
             Servlet servlet) throws Exception {
-          String fullpath = prefixPath(path);
+          String p = trimPath(path);
           synchronized (l) {
-            leafReg.register(fullpath, servlet);
-            l.add(path);
+            leafReg.register(p, servlet);
+            l.add(p);
           }
         }
 
         public void unregister(
             String path) {
-          String fullpath = prefixPath(path);
+          String p = trimPath(path);
           synchronized (l) {
-            leafReg.unregister(fullpath);
-            l.remove(path);
+            leafReg.unregister(p);
+            l.remove(p);
           }
         }
 
@@ -317,9 +317,8 @@ implements Component
           // unregister all servlets
           synchronized (l) {
             for (int n = l.size() - 1; n >= 0; n--) {
-              String path = (String)l.get(n);
-              String fullpath = prefixPath(path);
-              leafReg.unregister(fullpath);
+              String p = (String) l.get(n);
+              leafReg.unregister(p);
             }
             l.clear();
           }

@@ -35,34 +35,41 @@ import org.cougaar.lib.web.arch.util.PrefixMatch;
  * This is a <code>Servlet</code> that uses a 
  * <code>ServletRegistry</code> to delegate Servlet requests.
  * <p>
- * There are four request cases:
+ * There are five request cases:
  * <ol>
  *   <li>If the request-path does not start with "/$" then the
- *       "noNameServlet" is used.</li>
- *   <li>If the request is "/$[/.*]" then the "emptyNameServlet" 
- *       is used.</li>
- *   <li>If the "/$name[/.*]" is not known then the 
- *       "unknownNameServlet" is used.</li>
- *   <li>If the name has been registered then the request is 
+ *       <code>noNameServlet</code> is used.</li>
+ *   <li>If the request is "/$[/.*]" then the
+ *       <code>emptyNameServlet</code> is used.</li>
+ *   <li>If the name in "/$[~]name[/.*]" is not locally registered
+ *       then the <code>unknownNameServlet</code> is used.</li>
+ *   <li>If the request is "/$~[name[/.*]]" then the request is
+ *       handled as if it was "/$<i>rootName</i>[/.*]"</li>
+ *   <li>If the name is locally registered then the request is
  *       delegated to the registered Servlet.</li>
  * </ol>
+ * <p>
+ * The most common case is "/$name/<i>path</i>", such as "/$X/test",
+ * which would invoke X's "/test" servlet.
+ * <p>
+ * The "/$~" prefix is used to access the local "root" for a name.
+ * For example, if the rootName is "R" and the path is "/$~X/test",
+ * then this would invoke R's "/test" servlet.  An equivalent path
+ * is "/$~/test".
  */
 public class RootServlet 
 implements Servlet {
 
-  /**
-   * Global (name, Servlet) registry.
-   */
+  /** Global (name, Servlet) registry. */
   private final ServletRegistry servletReg;
 
-  /**
-   * Servlet to handle all non-"/$*" requests.
-   */
+  /** Name for "/$~" requests. */
+  private final String rootName;
+
+  /** Servlet to handle all non-"/$*" requests. */
   private final Servlet noNameServlet;
 
-  /**
-   * Servlet to handle all "/$[/.*]" requests.
-   */
+  /** Servlet to handle all "/$[/.*]" requests. */
   private final Servlet emptyNameServlet;
 
   /**
@@ -74,23 +81,26 @@ implements Servlet {
 
   public RootServlet(
       ServletRegistry servletReg,
+      String rootName,
       Servlet noNameServlet,
       Servlet emptyNameServlet,
       Servlet unknownNameServlet) {
     this.servletReg = servletReg;
+    this.rootName = rootName;
     this.noNameServlet = noNameServlet;
     this.emptyNameServlet = emptyNameServlet;
     this.unknownNameServlet = unknownNameServlet;
 
     // null-check
-    if (servletReg == null) {
-      throw new NullPointerException();
-    } else if (noNameServlet == null) {
-      throw new NullPointerException();
-    } else if (emptyNameServlet == null) {
-      throw new NullPointerException();
-    } else if (unknownNameServlet == null) {
-      throw new NullPointerException();
+    String s =
+     (servletReg == null ? "servletReg" :
+      rootName == null ? "rootName" :
+      noNameServlet == null ? "noNameServlet" :
+      emptyNameServlet == null ? "emptyNameServlet" :
+      unknownNameServlet == null ? "unknownNameServlet" :
+      null);
+    if (s != null) {
+      throw new IllegalArgumentException("null "+s);
     }
 
     // initialize the servlets
@@ -152,7 +162,7 @@ implements Servlet {
       return noNameServlet;
     }
 
-    // look for "/$name[/*]"
+    // look for "/$[~]name[/*]"
     int i = path.indexOf('/', 2);
     if (i < 0) {
       i = pathLength;
@@ -163,6 +173,18 @@ implements Servlet {
     if (name.length() == 0) {
       // empty name
       return emptyNameServlet;
+    }
+
+    // look for "/$[~]name[/*]"
+    if (name.charAt(0) == '~') {
+      // check to make sure we contain the name
+      name = name.substring(1);
+      if (name.length() > 0 &&
+          servletReg.get(name) == null) {
+        return unknownNameServlet;
+      }
+      // use the root name
+      name = rootName;
     }
 
     // find the matching servlet

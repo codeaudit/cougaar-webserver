@@ -20,6 +20,8 @@
  */
 package org.cougaar.lib.web.arch.server;
 
+import java.net.BindException;
+import java.io.IOException;
 import java.util.Map;
 import javax.servlet.Servlet;
 import javax.servlet.ServletException;
@@ -49,18 +51,20 @@ public interface ServletEngine {
    * @param options an optional map of configuration options
    *    that are implementation specific (e.g. "http.acceptCount").
    */
-  public void configure(
-      int httpPort,
-      int httpsPort,
-      Map options) throws Exception;
+  public void configure(int httpPort, int httpsPort, Map options);
 
   /**
    * Start the server.
    *
    * @see #isRunning()
    * @see #stop()
+   *
+   * @throws BindException if the either the HTTP or HTTPS port is
+   * already in use.  The client can then optionally call "configure"
+   * with different port(s) and try another start.
+   * @throws IOException some other server exception occurred.
    */
-  public void start() throws Exception;
+  public void start() throws BindException, IOException;
 
   /**
    * @return true if the server has been started and not stopped yet.
