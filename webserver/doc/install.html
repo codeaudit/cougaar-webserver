@@ -36,7 +36,7 @@ configure the server.  The defaults are usually fine:
 </pre><p>
 <p>
 If you want to disable HTTPS then set the "...https.port=-1" and skip ahead
-to <a href="#ini">this step</a>.  Disabling HTTPS and only using HTTP 
+to <a href="#userAuth">this step</a>.  Disabling HTTPS and only using HTTP 
 simplifies this installation and is a good idea when attempting a 
 first-time installation.  Also, the simple single-Node four-agent 
 "minitestconfig" society is a good first-time test.
@@ -127,6 +127,33 @@ as part of the HTTPS request.
 A special-case for client authentication is to let the client use the
 server's certificate, in which case the server's keystore only needs
 to contain the server's certificate.
+</li><p>
+
+<li>
+<a name="userAuth">
+As an example of username / password authentication, the Tomcat 3.3 
+server implementation is configured to prompt for a login for
+all requests with paths that end in ".secure". <a name="secure">  
+This is defined in:
+<pre>
+   webtomcat/data/webapps/ROOT/WEB-INF/web.xml  <a name="web.xml">
+</pre><br>
+The pattern can be modified to another path or multiple 
+"&lt;url-pattern&gt;" entries for testing.
+<p>
+The usernames and passwords are stored in:
+<pre>
+   webtomcat/data/conf/tomcat-users.xml
+</pre><br>
+By default (for testing <b><i>only</i></b>) there is one user:
+<pre>
+   username: test    password: test
+</pre><br>
+<p>
+To test the login support you should either modify the 
+<a href="#web.xml">"web.xml"</a> and/or define a Servlet with a
+<a href="#secure">"*.secure"</a> path within your 
+<a href="#ini">.ini</a> files.
 </li><p>
 
 <li>
