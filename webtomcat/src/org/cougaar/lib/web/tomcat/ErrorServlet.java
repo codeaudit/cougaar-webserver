@@ -31,6 +31,13 @@ import javax.servlet.http.*;
  * <p>
  * This allows the ServletEngine to display custom
  * error messages with a 404 error-code.
+ * <p>
+ * <b>NOTE:</b> Tomcat 4+ encodes the error message, which prevents 
+ * the servlet from embedding HTML in the error response.  For 
+ * example, all '&lt;' characters are converted into "&amp;lt;"
+ * strings.  Servlets that need to generate an HTML response should
+ * use (the discouraged) "setStatus(..)" instead of "sendError(..)"
+ * response method.  See bug 1259 for details.
  */
 public class ErrorServlet implements Servlet {
 
@@ -49,22 +56,26 @@ public class ErrorServlet implements Servlet {
 
     httpRes.setContentType("text/html");
 
+    // Integer statusObj = (Integer)
+    //   req.getAttribute("javax.servlet.error.status_code");
+    // int statusInt = 
+    //   ((statusObj != null) ? statusObj.getValue() : -1);
+    // assert (HttpServletResponse.SC_NOT_FOUND == statusInt);
+
+    httpRes.setStatus(HttpServletResponse.SC_NOT_FOUND);
+
     String msg = 
       (String) req.getAttribute("javax.servlet.error.message");
-    if (msg == null) {
-      msg = "Not Found";
-    }
-    if (!(msg.regionMatches(true, 0, "<html>", 0, 6))) {
-      msg = 
-        "<html><head><title>"+msg+" (404)</title></head>\n"+
-        "<body><h1>"+msg+" (404)</h1>\n"+
-        "<p>"+
-        "<b>Not found request:</b> "+httpReq.getRequestURI()+
-        "</body></html>\n";
-    }
-
+    
     PrintWriter out = httpRes.getWriter();
-    out.print(msg);
+
+    out.print(
+      "<html><head><title>"+msg+" (404)</title></head>\n"+
+      "<body><h1>"+msg+" (404)</h1>\n"+
+      "<p>"+
+      "<b>Not found request:</b> "+httpReq.getRequestURI()+
+      "</body></html>\n");
+    out.close();
   }
 
   private ServletConfig config;
