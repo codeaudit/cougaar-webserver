@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<!-- 
+  Do NOT modify this file!  It is for Cougaar internal use only!
+
+  This partially configures the "TomcatServletEngine" for Cougaar
+  ServletService, in combination with Java code to configure
+  the HTTP/HTTPS port listeners.  Eventually all of this XML file
+  may move into code...
+  -->
+
+<Server>
+
+    <ContextManager workDir="work" >
+
+        <!-- 
+            Do NOT alter this ordering! 
+            I'm not sure if this is a minimal set...
+          -->
+
+        <LoaderInterceptor11  useApplicationLoader="true" />
+
+        <TrustedLoader />
+
+        <!-- Change "ERROR" to "DEBUG" for Tomcat debugging -->
+        <LogSetter name="tc_log" timestamps="true" verbosityLevel="ERROR"/>
+        <LogEvents enabled="false" />
+        
+        <ContextXmlReader config="conf/server.xml" />
+
+        <AutoWebApp dir="webapps" host="DEFAULT" />
+
+        <SimpleMapper1 />
+
+        <SessionExpirer checkInterval="60" />
+        
+        <!-- this "/dev/urandom" is okay even on non-Linux machines -->
+        <SessionIdGenerator 
+            randomClass="java.security.SecureRandom" 
+            randomFile="/dev/urandom" />
+
+        <WebXmlReader validate="true" />
+
+        <ErrorHandler showDebugInfo="true" />
+
+        <WorkDirSetup cleanWorkDir="true" />
+
+        <Jdk12Interceptor /> 
+
+        <InvokerInterceptor /> 
+
+        <SimpleSessionStore maxActiveSessions="-1" />
+
+        <!-- future form-based username/password support: -->
+        <AccessInterceptor />
+        <CredentialsInterceptor />
+
+        <LoadOnStartupInterceptor />
+
+        <Servlet22Interceptor />
+
+        <DecodeInterceptor /> 
+
+        <SessionId cookiesFirst="true" noCookies="false" /> 
+
+    </ContextManager>
+</Server>

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<!--
+
+  Do NOT alter this file!  It is for Cougaar internal use only!
+
+  This file configures Tomcat to load our "HookServlet", which
+  delegates all service requests back into Cougaar.
+  -->
+
+<!DOCTYPE web-app
+    PUBLIC "-//Sun Microsystems, Inc.//DTD Web Application 2.2//EN"
+    "http://java.sun.com/j2ee/dtds/web-app_2_2.dtd">
+
+<web-app>
+
+    <!-- load the hook for Cougaar ServletService delegation -->
+    <servlet>
+        <servlet-name>cougaar</servlet-name>
+        <servlet-class>org.cougaar.lib.web.tomcat.HookServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>cougaar</servlet-name>
+        <url-pattern>/*</url-pattern> 
+    </servlet-mapping>
+
+    <!-- create an error page that shows the error message -->
+    <error-page>
+        <error-code>404</error-code>
+        <location>/error404</location>
+    </error-page>
+    <servlet>
+        <servlet-name>err404</servlet-name>
+        <servlet-class>org.cougaar.lib.web.tomcat.ErrorServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>err404</servlet-name>
+        <url-pattern>/error404</url-pattern> 
+    </servlet-mapping>
+
+    <!-- Default login configuration uses BASIC authentication -->
+    <!--
+    <login-config>
+      <auth-method>BASIC</auth-method>
+      <realm-name>Example Basic Authentication Area</realm-name>
+    </login-config>
+    -->
+
+    <!-- Form-based login is enabled by default.  If you wish to
+         try Basic authentication, comment out the <login-config>
+         section below and uncomment the one above. -->
+    <login-config>
+      <auth-method>FORM</auth-method>
+      <realm-name>Example Form-Based Authentication Area</realm-name>
+      <form-login-config>
+        <form-login-page>/jsp/security/login/login.jsp</form-login-page>
+        <form-error-page>/jsp/security/login/error.jsp</form-error-page>
+      </form-login-config>
+    </login-config>
+
+</web-app>

@@ -1,0 +1,16 @@
+Implementation of "webserver"'s "ServletEngine" that uses
+Tomcat 3.3 build as of 10/19/01.  Loaded by the
+"webserver"'s "RootServletServiceComponent" via reflection.
+
+The source contains the package:
+  org.cougaar.lib.web.tomcat
+
+The required data files are in "data/":
+  conf/server.xml
+  conf/modules.xml
+  webapps/ROOT/WEB-INF/web.xml
+
+Depends upon "sys/tomcat_33.jar", which is a merge of 9 Tomcat 
+3.3 jars that include the "org.apache.tomcat.*" packages.
+
+[Further documentation will be added in the near future]
