@@ -82,6 +82,12 @@ implements ServletConfig {
   private static class DummyServletContext  // ignore deprecation warnings!
   implements ServletContext 
   {
+    public java.util.Set getResourcePaths(String s) {
+      return java.util.Collections.EMPTY_SET;
+    }
+    public String getServletContextName() {
+      return "Cougaar";
+    }
     public ServletContext getContext(String uripath) {
       return null;
     }
