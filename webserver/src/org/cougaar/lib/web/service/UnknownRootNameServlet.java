@@ -21,6 +21,7 @@
 package org.cougaar.lib.web.service;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.*;
 
 import javax.servlet.*;
@@ -68,6 +69,14 @@ implements Servlet {
       HttpServletRequest req,
       HttpServletResponse res) throws ServletException, IOException {
 
+    // generate an HTML error response, with a 404 error code.
+    //
+    // use "setStatus" instead of "sendError" -- see bug 1259
+
+    res.setContentType("text/html");
+    res.setStatus(HttpServletResponse.SC_NOT_FOUND);
+    PrintWriter out = res.getWriter();
+
     // get the "/$name[/.*]"
     String path = req.getRequestURI();
     String name;
@@ -96,28 +105,27 @@ implements Servlet {
        ("?"+queryString) :
        (""));
 
-    StringBuffer buf = new StringBuffer();
-    buf.append("<html><head><title>Unknown Agent name: \"");
-    buf.append(name);
-    buf.append(
+    out.print(
+        "<html><head><title>Unknown Agent name: \""+
+        name+
         "\"</title></head>\n"+
-        "<body><p><h1>Unknown Agent name: \"");
-    buf.append(name);
-    buf.append(
+        "<body><p><h1>Unknown Agent name: \""+
+        name+
         "\"</h1>\n"+
         "<p>Local agents:<ol>\n");
     for (int i = 0; i < n; i++) {
       String ni = (String) localNames.get(i);
       String li = "/$"+ni+trimPath+queryString;
-      buf.append("<li><a href=\"");
-      buf.append(li);
-      buf.append("\">"+li+"</a></li>\n");
+      out.print(
+          "<li><a href=\""+
+          li+
+          "\">"+
+          li+
+          "</a></li>\n");
     }
-    buf.append("</ol></body></html>");
+    out.print("</ol></body></html>");
 
-    res.sendError(
-        HttpServletResponse.SC_NOT_FOUND, 
-        buf.toString());
+    out.close();
   }
 
   //

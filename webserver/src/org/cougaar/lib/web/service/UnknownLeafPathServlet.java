@@ -101,7 +101,7 @@ implements Servlet {
       "<li><a href=\"/agents\">List agents co-located with agent \""+
       name+
       "\"</a></li>\n"+
-      "<li><a href=\"/agents?all\">List all agents</a></li>\n"+
+      "<li><a href=\"/agents?scope=all\">List all agents</a></li>\n"+
       "</ul>\n"+
       "</body></html>");
     out.close();
@@ -113,6 +113,14 @@ implements Servlet {
       String name,
       String path) throws ServletException, IOException {
 
+    // generate an HTML error response, with a 404 error code.
+    //
+    // use "setStatus" instead of "sendError" -- see bug 1259
+
+    res.setContentType("text/html");
+    res.setStatus(HttpServletResponse.SC_NOT_FOUND);
+    PrintWriter out = res.getWriter();
+
     String title = 
       "Unknown Servlet Path \""+
       path+
@@ -120,34 +128,26 @@ implements Servlet {
       name+
       "\"";
 
-    StringBuffer buf = new StringBuffer();
-    buf.append("<html><head><title>");
-    buf.append(title);
-    buf.append(
+    out.print(
+        "<html><head><title>"+
+        title+
         "</title></head>\n"+
-        "<body><p><h1>");
-    buf.append(title);
-    buf.append(
+        "<body><p><h1>"+
+        title+
         "</h1>\n"+
         "<p>Options:<ul>\n"+
-        "<li><a href=\"/$");
-    buf.append(name);
-    buf.append(
-        "/list\">List paths in agent \"");
-    buf.append(name);
-    buf.append(
+        "<li><a href=\"/$"+
+        name+
+        "/list\">List paths in agent \""+
+        name+
         "\"</a></li>\n"+
-        "<li><a href=\"/agents\">List agents co-located with agent \"");
-    buf.append(name);
-    buf.append(
+        "<li><a href=\"/agents\">List agents co-located with agent \""+
+        name+
         "</a></li>\n"+
-        "<li><a href=\"/agents?all\">List all agents</a></li>\n"+
+        "<li><a href=\"/agents?scope=all\">List all agents</a></li>\n"+
         "</ul>\n"+
         "</body></html>");
-
-    res.sendError(
-        HttpServletResponse.SC_NOT_FOUND, 
-        buf.toString());
+    out.close();
   }
 
   //
