@@ -1,6 +1,6 @@
 /*
  * <copyright>
- *  Copyright 2000-2001 BBNT Solutions, LLC
+ *  Copyright 2000-2002 BBNT Solutions, LLC
  *  under sponsorship of the Defense Advanced Research Projects Agency (DARPA).
  * 
  *  This program is free software; you can redistribute it and/or modify
@@ -24,11 +24,13 @@ import java.io.File;
 import java.net.InetAddress;
 import java.util.Collections;
 import java.util.Map;
+
 import org.apache.catalina.startup.Catalina;
 import org.apache.catalina.LifecycleException;
 import org.apache.catalina.Lifecycle;
 import org.apache.catalina.Server;
 import org.apache.catalina.Service;
+import org.apache.catalina.Connector;
 import org.apache.catalina.Container;
 import org.apache.catalina.Context;
 import org.apache.catalina.connector.http.HttpConnector;
@@ -209,7 +211,10 @@ public class EmbeddedTomcat extends Catalina {
     ctr.setPort(port);
     ctr.setEnableLookups(false);
     if (debug) ctr.setDebug(30);
+
     getService().addConnector(ctr);
+
+    setRedirectPort(ctr);
   }
 
   /**
@@ -319,7 +324,45 @@ public class EmbeddedTomcat extends Catalina {
     ctr.setScheme("https");
     ctr.setSecure(true);
     if (debug) ctr.setDebug(30);
+
+    setRedirectPort(ctr);
+
     getService().addConnector(ctr);
+
   }
 
+  /**
+   * Sets the redirection port all HTTP connections if this is an
+   * HTTPS connection or the redirection port of this connection
+   * if an HTTPS connection exists and this is an HTTP connection.
+   *
+   * @param conn The HTTP to set the redirection port or the HTTPS
+   *             connection to set all other connections' redirection ports.
+   */
+  protected void setRedirectPort(HttpConnector conn) {
+    Connector[] connectors = getService().findConnectors();
+    
+    if (connectors == null) {
+      return; // there are no connectors
+    }
+    
+    for (int i = 0; i < connectors.length; i++) {
+      if (!(connectors[i] instanceof HttpConnector)) {
+	continue; // don't do anything to non HTTP connectors
+      }
+      HttpConnector httpConn = (HttpConnector) connectors[i];
+      
+      if (httpConn.getSecure()) {
+	if (!conn.getSecure()) {
+	  // found the HTTPS connection
+	  conn.setRedirectPort(httpConn.getPort());
+	  return;
+	}
+      } else {
+	if (conn.getSecure()) {
+	  httpConn.setRedirectPort(conn.getPort());
+	}
+      }
+    }
+  }
 }
