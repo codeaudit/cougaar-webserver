@@ -49,8 +49,8 @@ public interface GlobalRegistry {
 
   /**
    * Equivalent to taking the port from
-   * both HTTP[S] configs and calling the other
-   * <tt>configure(..)</tt> method.
+   * both HTTP[S] configs and calling the
+   * <tt>configure(int,int)</tt> method.
    * <p>
    * If a parameter is null then it is treated as
    * (-1).
@@ -94,7 +94,7 @@ public interface GlobalRegistry {
    *
    * @throws IOException if some low-level IO error has occurred
    *
-   * @see #find(GlobalEntry)
+   * @see #findAll(GlobalEntry)
    */
   GlobalEntry find(String name) throws IOException;
 
@@ -137,7 +137,7 @@ public interface GlobalRegistry {
    *
    * @see #find(String) faster name-based lookup
    *
-   * @see GlobalEntry.matches(GlobalEntry) basis for the matching
+   * @see GlobalEntry#matches(GlobalEntry) basis for the matching
    */
   public List findAll(List toList, GlobalEntry query) throws IOException;
 
