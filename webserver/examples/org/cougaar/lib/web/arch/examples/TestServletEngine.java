@@ -109,17 +109,18 @@ public class TestServletEngine {
         httpsPort,
         options);
 
-    servEng.setGateway(gatewayServlet);
-
-    servEng.start();
-
-    System.out.println("Server running");
+    // start and stop the server every 10 seconds, to test for memory leaks
     while (true) {
-      try {
-        Thread.sleep(57000);
-      } catch (Exception e) {
-        break;
-      }
+      servEng.setGateway(gatewayServlet);
+      servEng.start();
+      System.out.println("Server running...");
+
+      try { Thread.sleep(10 * 1000); } catch (Exception e) { break; }
+
+      servEng.stop();
+      System.out.println("Server stopped");
+
+      try { Thread.sleep(10 * 1000); } catch (Exception e) { break; }
     }
   }
 
