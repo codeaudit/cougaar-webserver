@@ -114,12 +114,15 @@ public final class HookServlet implements Servlet {
       }
     }
   }
-  
+
+  /**
+   * Default servlet when no hook servlet has been configured.
+   */
   private static final class NoHookServlet implements Servlet {
     public void service(ServletRequest req, ServletResponse res)
       throws ServletException, IOException {
-      if (!(req instanceof HttpServletRequest)
-        || (res instanceof HttpServletResponse)) {
+      if (!(req instanceof HttpServletRequest) ||
+          !(res instanceof HttpServletResponse)) {
         throw new ServletException("non-HTTP request or response");
       }
       HttpServletResponse httpRes = (HttpServletResponse) res;

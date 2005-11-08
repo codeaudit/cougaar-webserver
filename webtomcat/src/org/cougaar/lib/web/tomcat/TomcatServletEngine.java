@@ -86,6 +86,8 @@ public class TomcatServletEngine
 
   private boolean isRunning = false;
 
+  private EmbeddedTomcat et;
+
   public TomcatServletEngine(Object arg) {
     if (!(arg instanceof String)) {
       throw new IllegalArgumentException(
@@ -216,7 +218,7 @@ public class TomcatServletEngine
       }
 
       // launch the server
-      EmbeddedTomcat et = new EmbeddedTomcat();
+      et = new EmbeddedTomcat();
       
       et.configure(serverOptions);
 
@@ -302,9 +304,12 @@ public class TomcatServletEngine
     try {
       setGateway(null);
 
-      // see org.apache.share.startup.Tomcat's "stopTomcat()"
-      System.out.println("Not implemented: Kill TomCat");
+      et.embeddedStop();
+      // Allow et to be garbage-collected.
+      et = null;
     } catch (Exception e) {
+      System.err.println("Error while shutting down Tomcat");
+      e.printStackTrace();
     }
      
     // discard configuration

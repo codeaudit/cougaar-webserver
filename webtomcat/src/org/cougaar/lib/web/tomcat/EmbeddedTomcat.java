@@ -151,6 +151,15 @@ public class EmbeddedTomcat extends Catalina {
   }
 
   /**
+   * Stops the web server.
+   */
+  public void embeddedStop() throws LifecycleException {
+    if (server instanceof Lifecycle) {
+      ((Lifecycle)server).stop();
+    }
+  }
+
+  /**
    * Adds an HTTPConnector to the server.
    * <p>
    * Current valid options:
