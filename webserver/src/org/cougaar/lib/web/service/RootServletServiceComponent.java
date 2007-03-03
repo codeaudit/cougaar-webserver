@@ -201,9 +201,6 @@ implements Component
     // Map<String, String>
     Map m = new HashMap(13);
 
-    String cip =
-      System.getProperty("org.cougaar.install.path", ".");
-
     // set defaults
     m.put("debug", Boolean.toString(log.isDebugEnabled()));
     m.put("redirect.timeout", "0");
@@ -211,9 +208,18 @@ implements Component
     m.put(
         "server.classname", 
         "org.cougaar.lib.web.tomcat.TomcatServletEngine");
-    m.put(
-        "server.arg",
-        cip+File.separator+"webtomcat"+File.separator+"data");
+    // look for tomcat config files in RUNTIME, SOCIETY, then INSTALL
+    for (int i = 0; i < 3; i++) {
+      String s = (i == 0 ? "runtime" : i == 1 ? "society" : "install");
+      String base = System.getProperty("org.cougaar."+s+".path");
+      if (base != null) {
+        String path = base+File.separator+"webtomcat"+File.separator+"data";
+        if ((new File(path)).isDirectory()) {
+          m.put("server.arg", path);
+          break;
+        }
+      }
+    }
     m.put("https.keyname", "tomcat");
     m.put("http.port", "8800");
     m.put("https.port", "-1");
@@ -260,9 +266,21 @@ implements Component
     String serverKeystore = 
       Parameters.findParameter("org.cougaar.web.keystore");
     if (serverKeystore != null) {
-      // keystore is relative to "$org.cougaar.install.path"
-      serverKeystore = cip+File.separator+serverKeystore;
-      m.put("https.keystore", serverKeystore);
+      // look for keystore in RUNTIME, SOCIETY, then INSTALL
+      for (int i = 0; i < 2; i++) {
+        String s = (i == 0 ? "runtime" : i == 1 ? "society" : "install");
+        String base = System.getProperty("org.cougaar."+s+".path");
+        if (base != null) {
+          String file = base+File.separator+serverKeystore;
+          if ((new File(file)).isFile()) {
+            serverKeystore = file;
+            break;
+          }
+        }
+      }
+      if (serverKeystore != null) {
+        m.put("https.keystore", serverKeystore);
+      }
     }
     String serverKeypass = 
       Parameters.findParameter("org.cougaar.web.keypass");
@@ -270,7 +288,7 @@ implements Component
       m.put("https.keypass", serverKeypass);
     }
 
-    if (!m.containsKey("https.trustKeystore")) {
+    if (!m.containsKey("https.trustKeystore") && serverKeystore != null) {
       // default trustKeystore is the keystore
       m.put("https.trustKeystore", serverKeystore);
     }
