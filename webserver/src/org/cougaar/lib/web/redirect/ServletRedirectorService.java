@@ -1,7 +1,7 @@
 /*
  * <copyright>
  *  
- *  Copyright 2000-2004 BBNT Solutions, LLC
+ *  Copyright 2000-2007 BBNT Solutions, LLC
  *  under sponsorship of the Defense Advanced Research Projects
  *  Agency (DARPA).
  * 
@@ -24,43 +24,22 @@
  * </copyright>
  */
 
-package org.cougaar.lib.web.service;
+package org.cougaar.lib.web.redirect;
 
-import java.io.IOException;
-import java.io.PrintWriter;
-
-import javax.servlet.Servlet;
-import javax.servlet.ServletConfig;
-import javax.servlet.ServletException;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
-import org.cougaar.core.servlet.ComponentServlet;
+import org.cougaar.core.component.Service;
 
 /**
- * This servlet handles "/robots.txt" requests with a hard-coded disallow
- * response:<tt><pre>
- *   User-agent: *
- *   Disallow: /
- * </pre></tt>to keep out web-crawlers, such as Google.
+ * This service provides a {@link ServletRedirector} for infrastructure use in
+ * redirecting / tunneling servlet requests to remote agents.
+ * <p>
+ * For example, if node "A" contains agent "1", and a servlet request is made
+ * for agent "2", then the root servlet will invoke the redirector to locate
+ * agent "2"'s address and redirect/tunnel the client to that remote node.
+ *
+ * @see ServletRedirector redirector API
+ * @see ServletRedirectorRegistryService registry for multiple redirectors in
+ *   the same node.
  */
-public class BlockRobotsServlet extends ComponentServlet {
+public interface ServletRedirectorService extends ServletRedirector, Service {
 
-  protected String getPath() {
-    String ret = super.getPath();
-    return (ret == null ? "/robots.txt" : ret);
-  }
-
-  public void doGet(
-      HttpServletRequest req, HttpServletResponse res
-      ) throws ServletException, IOException {
-
-    // write blocking response
-    res.setContentType("text/plain");
-    PrintWriter out = res.getWriter();
-    out.print("User-agent: *\nDisallow: /\n");
-    out.close();
-  }
 }

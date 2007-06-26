@@ -1,7 +1,7 @@
 /*
  * <copyright>
  *  
- *  Copyright 2000-2004 BBNT Solutions, LLC
+ *  Copyright 1997-2007 BBNT Solutions, LLC
  *  under sponsorship of the Defense Advanced Research Projects
  *  Agency (DARPA).
  * 
@@ -24,43 +24,36 @@
  * </copyright>
  */
 
-package org.cougaar.lib.web.service;
+package org.cougaar.lib.web.engine;
 
-import java.io.IOException;
-import java.io.PrintWriter;
-
+import java.util.Map;
 import javax.servlet.Servlet;
-import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
-import org.cougaar.core.servlet.ComponentServlet;
 
 /**
- * This servlet handles "/robots.txt" requests with a hard-coded disallow
- * response:<tt><pre>
- *   User-agent: *
- *   Disallow: /
- * </pre></tt>to keep out web-crawlers, such as Google.
+ * A servlet engine, as used by the {@link ServletEngineRegistryService}.
+ *
+ * @see ServletEngineService
  */
-public class BlockRobotsServlet extends ComponentServlet {
+public interface ServletEngine {
 
-  protected String getPath() {
-    String ret = super.getPath();
-    return (ret == null ? "/robots.txt" : ret);
-  }
+  /**
+   * Set the single "gateway" servlet that will handle all client requests.
+   */
+  void setGateway(Servlet s) throws ServletException;
 
-  public void doGet(
-      HttpServletRequest req, HttpServletResponse res
-      ) throws ServletException, IOException {
+  /**
+   * Get the naming service URIs for this servlet engine.
+   * <p>
+   * For example:<pre>
+   *    "http"  -&gt; "http://myhost:80/"
+   *    "https" -&gt; "http://myhost:443/cougaar"
+   * </pre>
+   *
+   * @return a Map of String to {@link java.net.URI}s that should be advertised
+   *   in the naming service.  This map will be advertised for every local
+   *   agent.
+   */
+  Map getNamingEntries();
 
-    // write blocking response
-    res.setContentType("text/plain");
-    PrintWriter out = res.getWriter();
-    out.print("User-agent: *\nDisallow: /\n");
-    out.close();
-  }
 }

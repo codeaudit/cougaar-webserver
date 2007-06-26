@@ -26,70 +26,61 @@
 package org.cougaar.lib.web.arch.root;
 
 import java.io.IOException;
-import java.net.URI;
+import java.util.Map;
 import java.util.Set;
 
 /**
- * Interface to a global registry of servers and their
- * (globally-unique) child names.
+ * Interface to a global registry of servers and their (globally-unique) child
+ * names.
  * <p>
- * A server can only run on "localhost", so "localhost"
- * is used when adding a name to the registry.
- * <p>
- * For example, host "bbn.com" could have HTTP support on port
- * 4321 and HTTPS support on port 8765, and contain two (internal) 
- * children, "AgentX" and "AgentY".  The <code>GlobalRegistry</code> 
- * provides support for "bbn.com" to advertise:
+ * For example, host "bbn.com" could have HTTP support on port 4321 and HTTPS
+ * support on port 8765, and contain two (internal) children, "AgentX" and
+ * "AgentY".  The <code>GlobalRegistry</code> provides support for "bbn.com"
+ * to advertise:
  * <pre><tt>
  *    ("AgentX", "http=bbn.com:4321, https=bbn.com:8765")
  *    ("AgentY", "http=bbn.com:4321, https=bbn.com:8765")
  * </tt></pre>
  * to remote servers and to find remote names, such as "AgentZ".
  * <p>
- * The names must be HTTP safe -- see RFC 1945 for details.
+ * The URL-encoded names must be HTTP safe -- see RFC 1945 for details.
  */
 public interface GlobalRegistry {
 
   /**
-   * Configure the local server's HTTP and HTTP addresses.
+   * Configure the local server's rebind/unbind entries.
    * <p>
-   * These address should be constant for the lifetime of 
-   * the server.  This should <u>only</u> be done when the 
-   * registry is first created.
-   */
-  void configure(
-      int httpPort,
-      int httpsPort) throws IOException;
-
-  /**
-   * Associate the given name in the global registry with this
-   * server's location.
-   * <p>
-   * This will remove the existing entry if one exists.
+   * These address should be constant for the lifetime of the server.
+   * This method should <u>only</u> be called when the registry is
+   * first created.
    *
-   * @throws Exception if name is already in use, or other error
+   * @param namingEntries a Map of Strings to URIs
    */
-  void rebind(String encName) throws IOException;
+  void configure(Map namingEntries);
 
   /**
-   * Remove the given name from the global registry.
-   *
-   * @throws Exception if name not locally registered, or other error
+   * Bind the specified name with our namingEntries.
    */
-  void unbind(String encName) throws IOException;
+  void rebind(String encName);
 
   /**
-   * Find the entry that matches the globally-unique name.
+   * Remove our binding for this name.
+   */
+  void unbind(String encName);
+
+  /**
+   * Find all entries that matches the globally-unique name.
    * 
-   * @return the matching URI, or null if none matches
-   *
-   * @throws IOException if some low-level IO error has occurred
+   * @return a non-null Map of Strings to URIs
+   * @throws RuntimeException if there is a timeout or other exception
    */
-  URI get(String encName, String scheme, long timeout) throws IOException;
+  Map getAll(String encName, long timeout);
 
   /**
    * Fetch all encoded names with the given suffix.
+   * @return a Set of URL-encoded Strings
+   * @throws RuntimeException if there is a timeout or other exception
    */
-  Set list(String encSuffix, long timeout) throws IOException;
+  Set list(String encSuffix, long timeout);
 
 }

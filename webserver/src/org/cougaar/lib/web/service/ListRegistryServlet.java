@@ -23,6 +23,7 @@
  *  
  * </copyright>
  */
+
 package org.cougaar.lib.web.service;
 
 import java.io.IOException;
@@ -41,9 +42,8 @@ import javax.servlet.http.HttpServletResponse;
 import org.cougaar.lib.web.arch.ServletRegistry;
 
 /**
- * A servlet that displays all the paths in a 
- * <code>ServletRegistry</code>, for <u>leaf</u> servlet
- * service use (within an Agent).
+ * A servlet that displays all the paths in a <code>ServletRegistry</code>,
+ * for <u>leaf</u> servlet service use (within an Agent).
  * <p>
  * <ul>
  *   <li>"?format=html" -- generate a pretty html 
@@ -56,8 +56,7 @@ import org.cougaar.lib.web.arch.ServletRegistry;
  *       alphabetical order (instead of "?sorted=true")</li>
  * </ul>
  */
-public class ListRegistryServlet 
-implements Servlet {
+public class ListRegistryServlet implements Servlet {
 
   // read-only registry
   private final ServletRegistry reg;
@@ -79,27 +78,12 @@ implements Servlet {
   }
 
   public void service(
-      ServletRequest req,
-      ServletResponse res) throws ServletException, IOException {
-    HttpServletRequest httpReq;
-    HttpServletResponse httpRes;
-    try {
-      httpReq = (HttpServletRequest) req;
-      httpRes = (HttpServletResponse) res;
-    } catch (ClassCastException cce) {
-      // not an HTTP request?
-      throw new ServletException("non-HTTP request or response");
-    }
+      ServletRequest sreq, ServletResponse sres
+      ) throws ServletException, IOException {
 
-    displayList(httpReq, httpRes);
-  }
-
-  /**
-   * Utility method.
-   */
-  public final void displayList(
-      HttpServletRequest req,
-      HttpServletResponse res) throws ServletException, IOException {
+    // cast
+    HttpServletRequest req = (HttpServletRequest) sreq;
+    HttpServletResponse res = (HttpServletResponse) sres;
 
     // scan url-parameters for:
     //   "?format=[text|html]"
@@ -171,22 +155,11 @@ implements Servlet {
     out.close();
   }
 
-  //
-  // other Servlet methods
-  //
-
+  // etc
   private ServletConfig config;
-  public void init(ServletConfig config) {
-    this.config = config;
-  }
-  public ServletConfig getServletConfig() {
-    return config;
-  }
-  public String getServletInfo() {
-    return "list-registry";
-  }
-  public void destroy() {
-    // ignore
-  }
+  public void init(ServletConfig config) { this.config = config; }
+  public ServletConfig getServletConfig() { return config; }
+  public String getServletInfo() { return "list-registry"; }
+  public void destroy() { }
 
 }

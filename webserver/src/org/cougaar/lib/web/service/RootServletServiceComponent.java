@@ -23,43 +23,44 @@
  *  
  * </copyright>
  */
+
 package org.cougaar.lib.web.service;
 
-import java.io.File;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-import java.net.BindException;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
-
 import javax.servlet.Servlet;
-import javax.servlet.ServletConfig;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
-import org.cougaar.bootstrap.SystemProperties;
 import org.cougaar.core.component.Component;
 import org.cougaar.core.component.ServiceBroker;
 import org.cougaar.core.component.ServiceProvider;
 import org.cougaar.core.node.NodeControlService;
 import org.cougaar.core.node.NodeIdentificationService;
 import org.cougaar.core.service.LoggingService;
+import org.cougaar.core.service.wp.AddressEntry;
 import org.cougaar.core.service.wp.WhitePagesService;
 import org.cougaar.lib.web.arch.ServletRegistry;
 import org.cougaar.lib.web.arch.root.GlobalRegistry;
-import org.cougaar.lib.web.arch.root.RootRedirectServlet;
+import org.cougaar.lib.web.arch.root.Redirector;
 import org.cougaar.lib.web.arch.root.RootServlet;
 import org.cougaar.lib.web.arch.root.RootServletRegistry;
-import org.cougaar.lib.web.arch.server.ServletEngine;
+import org.cougaar.lib.web.engine.ServletEngineService;
+import org.cougaar.lib.web.redirect.NamingSupport;
+import org.cougaar.lib.web.redirect.ServletRedirector;
+import org.cougaar.lib.web.redirect.ServletRedirectorService;
 import org.cougaar.util.GenericStateModelAdapter;
-import org.cougaar.util.Parameters;
 
 /**
- * This component loads the {@link ServletEngine} and advertises the
+ * This component uses the {@link ServletEngineService} to advertise the
  * root-level {@link RootServletService}, which is used by the
  * agent-level {@link LeafServletServiceComponent}s to create the
  * agent-internal {@link org.cougaar.core.service.ServletService}.
@@ -68,364 +69,160 @@ import org.cougaar.util.Parameters;
  * for all agents.  Agent "A" obtains the RootServletService,
  * registers itself as "/$A/", and advertises the agent's internal
  * ServletService.
- * <p>
- * For HTTPS the "cougaar.rc" must contain:<pre>
- *   org.cougaar.web.keystore=FILENAME
- *   org.cougaar.web.keypass=Password
- * </pre>
- * where the FILENAME is relative to the "$cougaar.install.path".
- * See <code>org.cougaar.util.Parameters</code> for "cougaar.rc" 
- * documentation.
- * <p>
  * 
- * <pre>
  * @property org.cougaar.lib.web.redirect.timeout
  *   Timeout in millseconds for "/$" remote redirect lookups, where
  *   0 indicates no timeout.  Defaults to 0.
- * 
- * @property org.cougaar.lib.web.server.classname
- *   Classname for ServletEngine.  Defaults to Tomcat.
  *
- * @property org.cougaar.lib.web.server.arg
- *   Argument for ServletEngine.  Defaults to Tomcat path.
- *
- * @property org.cougaar.lib.web.scanRange
- *   The scan range for ports beyond the configured base HTTP
- *   and HTTPS ports.  If either port is in use the ports will 
- *   be incremented by one until "scanRange" ports have been 
- *   tried, at which time a java.net.BindingException will be 
- *   thrown.  The default is 100, which (if no other ports are
- *   being used, and no change to the below "http[s].port" 
- *   parameters) would allow for 100 Nodes on a machine.
- *
- * @property org.cougaar.lib.web.http.port
- *   The base integer port for the HTTP server, which defaults to
- *   8800.  The most common value is 8800.  If a negative number 
- *   is passed then HTTP listening is disabled.  Also see the 
- *    "org.cougaar.lib.web.scanRange" property.
- *
- * @property org.cougaar.lib.web.http.factory
- *   Optional classname for factory used to create HTTP server
- *   sockets.  Defaults to a standard socket factory.
- *
- * @property org.cougaar.lib.web.http.acceptCount
- *   HTTP ServerSocket backlog.  Defaults to a server default.
- *
- * @property org.cougaar.lib.web.https.port
- *   The base integer port for the HTTPS server, which defaults to
- *   -1.  The most common value is 8400.  If a negative number is 
- *   passed then HTTPS listening is disabled.  Also see the 
- *   "org.cougaar.lib.web.scanRange" property.
- *
- * @property org.cougaar.lib.web.https.acceptCount
- *   HTTPS ServerSocket backlog.  Defaults to a server default.
- *
- * @property org.cougaar.lib.web.https.clientAuth
- *   Used to enable HTTPS client-authentication.  Defaults to
- *   false.
- *
- * @property org.cougaar.lib.web.https.factory
- *   Optional classname for factory used to create HTTPS (SSL) 
- *   server sockets.  Defaults to a standard SSL socket factory.
- *
- * @property org.cougaar.lib.web.https.keystore
- *   Optional HTTPS keystore.  Prefer "cougaar.rc" entry
- *   for "org.cougaar.web.keystore=FILENAME".
- *
- * @property org.cougaar.lib.web.https.keypass
- *   Optional HTTPS keystore.  Prefer "cougaar.rc" entry
- *   for "org.cougaar.web.keypass=PASSWORD".
- * </pre>
- *
- * @see RootServletService
+ * @see RootServletService we provide this service
+ * @see ServletEngineService required engine service
+ * @see ServletRedirectService optional redirector service
  */
 public class RootServletServiceComponent 
 extends GenericStateModelAdapter
 implements Component 
 {
-  private static final String PROPERTY_PREFIX =
-    "org.cougaar.lib.web.";
+  private ServiceBroker sb;
 
   private LoggingService log;
+  private ServletEngineService engine;
+  private ServletRedirectorService redirector;
+  private ServiceBroker rootsb;
+  private WhitePagesService wp;
 
   private String localNode;
 
-  // used to create the "rootReg"
-  private WhitePagesService wp;
-
-  private ServiceBroker sb;
-
-  // from initialize
-  private List initList;
-  private long redirectTimeout;
-  private String serverClassname;
-  private Object serverArg;
-  private int scanRange;
-
-  private Map config;
-  private int initHttpPort;
-  private int initHttpsPort;
-
   private GlobalRegistry globReg;
+
   private ServiceProvider rootSP;
-  private ServletEngine servEng;
-  private ServletRegistry rootReg;
 
-  // actual HTTP/HTTPS ports that were used, in case the 
-  // initial ports (initHttp[s]Port) are already in use.
-  private int usedHttpPort;
-  private int usedHttpsPort;
-
-  // ignore "setServiceBroker", we want the node-level service broker
-
-  public void setNodeControlService(NodeControlService ncs) {
-    if (ncs == null) {
-      // Revocation
-    } else {
-      this.sb = ncs.getRootServiceBroker();
-    }
-  }
-
-  public void setParameter(Object o) {
-    if (o instanceof List) {
-      this.initList = (List) o;
-    } else if (o != null) {
-      throw new IllegalArgumentException(
-          "Invalid non-List parameter: "+
-          o.getClass().getName());
-    }
-  }
-
-  private void configureParameters() {
-
-    // Map<String, String>
-    Map m = new HashMap(13);
-
-    // set defaults
-    m.put("debug", Boolean.toString(log.isDebugEnabled()));
-    m.put("redirect.timeout", "0");
-    m.put("scanRange", "100");
-    m.put(
-        "server.classname", 
-        "org.cougaar.lib.web.tomcat.TomcatServletEngine");
-    // look for tomcat config files in RUNTIME, SOCIETY, then INSTALL
-    for (int i = 0; i < 3; i++) {
-      String s = (i == 0 ? "runtime" : i == 1 ? "society" : "install");
-      String base = System.getProperty("org.cougaar."+s+".path");
-      if (base != null) {
-        String path = base+File.separator+"webtomcat"+File.separator+"data";
-        if ((new File(path)).isDirectory()) {
-          m.put("server.arg", path);
-          break;
-        }
-      }
-    }
-    m.put("https.keyname", "tomcat");
-    m.put("http.port", "8800");
-    m.put("https.port", "-1");
-
-    // override with init parameters
-    if (initList != null) {
-      for (Iterator iter = initList.iterator();
-          iter.hasNext();
-          ) {
-        String s = (String) iter.next();
-        if (s != null) {
-          int sep = s.indexOf('=');
-          String key;
-          String value;
-          if (sep >= 0) {
-            key = s.substring(0, sep);
-            value = s.substring(sep+1);
-          } else {
-            key = s;
-            value = null;
-          }
-          m.put(key, value);
-        }
-      }
-      this.initList = null;
-    }
-
-    // override with system properties
-    Properties sysProps = 
-      SystemProperties.getSystemPropertiesWithPrefix(
-          PROPERTY_PREFIX);
-    if (sysProps != null) {
-      for (Enumeration en = sysProps.propertyNames();
-          en.hasMoreElements();
-          ) {
-        String key = (String) en.nextElement();
-        String value = sysProps.getProperty(key);
-        key = key.substring(PROPERTY_PREFIX.length());
-        m.put(key, value);
-      }
-    }
-    
-    // override with "cougaar.rc"
-    String serverKeystore = 
-      Parameters.findParameter("org.cougaar.web.keystore");
-    if (serverKeystore != null) {
-      // look for keystore in RUNTIME, SOCIETY, then INSTALL
-      for (int i = 0; i < 2; i++) {
-        String s = (i == 0 ? "runtime" : i == 1 ? "society" : "install");
-        String base = System.getProperty("org.cougaar."+s+".path");
-        if (base != null) {
-          String file = base+File.separator+serverKeystore;
-          if ((new File(file)).isFile()) {
-            serverKeystore = file;
-            break;
-          }
-        }
-      }
-      if (serverKeystore != null) {
-        m.put("https.keystore", serverKeystore);
-      }
-    }
-    String serverKeypass = 
-      Parameters.findParameter("org.cougaar.web.keypass");
-    if (serverKeypass != null) {
-      m.put("https.keypass", serverKeypass);
-    }
-
-    if (!m.containsKey("https.trustKeystore") && serverKeystore != null) {
-      // default trustKeystore is the keystore
-      m.put("https.trustKeystore", serverKeystore);
-    }
-
-    // extract our parameters
-    this.redirectTimeout =
-      Long.parseLong((String) m.get("redirect.timeout"));
-    this.serverClassname = (String) m.get("server.classname");
-    this.serverArg = (String) m.get("server.arg");
-    this.scanRange = Integer.parseInt((String) m.get("scanRange"));
-    this.initHttpPort = 
-      Integer.parseInt((String) m.get("http.port"));
-    this.initHttpsPort = 
-      Integer.parseInt((String) m.get("https.port"));
-
-    if (log.isDebugEnabled()) {
-      log.debug("Config: "+m);
-    }
-
-    // save the server options
-    config = Collections.unmodifiableMap(m);
+  public void setServiceBroker(ServiceBroker sb) {
+    this.sb = sb;
   }
 
   public void load() {
     super.load();
 
+    // obtain services
     log = (LoggingService)
       sb.getService(this, LoggingService.class, null);
-    if (log == null) {
-      log = LoggingService.NULL;
+
+    // required servlet engine
+    engine = (ServletEngineService)
+      sb.getService(this, ServletEngineService.class, null);
+    if (engine == null) {
+      throw new RuntimeException("Unable to obtain ServletEngineService");
     }
 
-    // which agent are we in?
+    // requred redirector
+    redirector = (ServletRedirectorService)
+      sb.getService(this, ServletRedirectorService.class, null);
+    if (redirector == null) {
+      throw new RuntimeException("Unable to obtain ServletRedirectorService");
+    }
+
+    // optional root-level sb
+    NodeControlService ncs = (NodeControlService)
+      sb.getService(this, NodeControlService.class, null);
+    if (ncs != null) {
+      rootsb = ncs.getRootServiceBroker();
+      sb.releaseService(this, NodeControlService.class, ncs);
+    }
+
+    // optional naming service
+    wp = (WhitePagesService)
+      sb.getService(this, WhitePagesService.class, null);
+    if (wp == null && log.isWarnEnabled()) {
+      log.warn("Root servlet-service unable to obtain WhitePagesService");
+    }
+
+    // figure out which node we're in
     NodeIdentificationService nis = (NodeIdentificationService)
       sb.getService(this, NodeIdentificationService.class, null);
-    localNode = nis.getMessageAddress().getAddress();
-    sb.releaseService(this, NodeIdentificationService.class, nis);
-
-    configureParameters();
-
-    // create the global registry
-    try {
-      // get the white pages service
-      wp = (WhitePagesService)
-        sb.getService(this, WhitePagesService.class, null);
-      if (wp == null && log.isWarnEnabled()) {
-        log.warn(
-            "Root servlet-service unable to"+
-            " obtain WhitePagesService");
-      }
-
-      // create a server registry
-      this.globReg = new NamingServerRegistry(wp);
-    } catch (RuntimeException re) {
-      throw re;
-    } catch (Exception e) {
-      throw new RuntimeException(
-          "Unable to create naming registry", e);
+    if (nis != null) {
+      localNode = nis.getMessageAddress().getAddress();
+      sb.releaseService(this, NodeIdentificationService.class, nis);
     }
 
+    // create our global (wp-backed) registry
     try {
-      // create and configure the server
-      this.servEng = createServer(serverClassname, serverArg);
-    } catch (RuntimeException re) {
-      throw re;
+      globReg = new NamingServerRegistry(wp);
     } catch (Exception e) {
-      throw new RuntimeException(
-          "Unable to create server", e);
+      throw new RuntimeException("Unable to create naming registry", e);
     }
 
-    if (log.isDebugEnabled()) {
-      log.debug(
-          "Root server ("+servEng+") is running");
+    // create our local path registry
+    ServletRegistry rootReg;
+    try {
+      rootReg = new RootServletRegistry(globReg);
+    } catch (Exception e) {
+      throw new RuntimeException("Unable to create local registry", e);
     }
 
+    // create our root "gateway" servlet
+    Servlet rootServlet;
     try {
-      // start the server
-      startServer();
-    } catch (RuntimeException re) {
-      throw re;
+      rootServlet = 
+        new RootServlet(
+            rootReg, 
+            localNode,
+            new WelcomeServlet(localNode),
+            new AgentsServlet(localNode, rootReg, globReg),
+            new RedirectorWrapper());
     } catch (Exception e) {
-      throw new RuntimeException(
-          "Unable to start servlet server", e);
+      throw new RuntimeException("Unable to create root servlet", e);
     }
 
+    // set our gateway
     try {
-      // configure the server
-      configureRootServlet();
-    } catch (RuntimeException re) {
-      throw re;
+      engine.setGateway(rootServlet);
     } catch (Exception e) {
-      throw new RuntimeException(
-          "Unable to create server", e);
+      throw new RuntimeException("Unable to set gateway servlet", e);
     }
 
+    // get our naming entries
+    //
+    // we do this after "setGateway(..)", in case our engine requires some
+    // side-effect of setting the gateway to figure out its entries.
+    Map namingEntries;
     try {
-      // configure the reg, which alters the rootReg
-      globReg.configure(usedHttpPort, usedHttpsPort);
-    } catch (RuntimeException re) {
-      servEng.stop();
-      throw re;
+      namingEntries = engine.getNamingEntries();
     } catch (Exception e) {
-      servEng.stop();
-      throw new RuntimeException(
-          "Unable to register in the name server"+
-          " (http="+usedHttpPort+", https="+usedHttpsPort+")",
-          e);
+      throw new RuntimeException("Unable to get the naming entries map", e);
+    }
+
+    // configure the global registry with our naming entries
+    try {
+      globReg.configure(namingEntries);
+    } catch (Exception e) {
+      throw new RuntimeException("Unable to register in the name server", e);
     }
 
     // create and advertise our service
-    this.rootSP = new RootServletServiceProviderImpl();
-    sb.addService(RootServletService.class, rootSP);
+    this.rootSP = new RootServletServiceProviderImpl(rootReg, namingEntries);
+    ServiceBroker the_sb = (rootsb == null ? sb : rootsb);
+    the_sb.addService(RootServletService.class, rootSP);
   }
 
   public void unload() {
 
-    try {
-      // revoke our service
-      if (rootSP != null) {
-        sb.revokeService(RootServletService.class, rootSP);
-        rootSP = null;
-      }
-
-      servEng.stop();
-    } catch (RuntimeException re) {
-      throw re;
-    } catch (Exception e) {
-      throw new RuntimeException(
-          "Unable to stop server", e);
+    // revoke our service
+    if (rootSP != null) {
+      ServiceBroker the_sb = (rootsb == null ? sb : rootsb);
+      the_sb.revokeService(RootServletService.class, rootSP);
+      rootSP = null;
     }
 
-    // release the white pages service
+    // release services
     if (wp != null) {
       sb.releaseService(this, WhitePagesService.class, wp);
       wp = null;
     }
-    if ((log != null) && (log != LoggingService.NULL)) {
+    if (engine != null) {
+      sb.releaseService(this, ServletEngineService.class, engine);
+      engine = null;
+    }
+    if (log != null) {
       sb.releaseService(this, LoggingService.class, log);
       log = null;
     }
@@ -434,205 +231,179 @@ implements Component
   }
 
   //
-  // private utility methods and classes:
+  // inner classes:
   //
 
-  // maybe refactor this into a ServletEngineService with a standard
-  // Tomcat-specific ServiceProvider implementation.
-  private static ServletEngine createServer(
-      String classname,
-      Object arg) throws Exception {
-    if (classname == null) {
-      throw new IllegalArgumentException(
-          "Server classname not specified");
-    }
-    // basic reflection code:
-    Class servClass = Class.forName(classname);
-    if (!(ServletEngine.class.isAssignableFrom(servClass))) {
-      throw new IllegalArgumentException(
-          "Class \""+classname+"\" does not implement \""+
-          ServletEngine.class.getName()+"\"");
-    }
-    Constructor servCons = 
-      servClass.getConstructor(new Class[]{Object.class});
-    Object ret;
-    try {
-      ret = servCons.newInstance(new Object[]{arg});
-    } catch (InvocationTargetException ite) {
-      // extract wrapped Exception
-      Throwable t = ite.getTargetException();
-      if (t instanceof Exception) {
-        throw (Exception) t;
+  private class RedirectorWrapper implements Redirector {
+
+    public void redirect(
+        String encName,
+        List options,
+        HttpServletRequest req,
+        HttpServletResponse res) throws ServletException, IOException {
+
+      int status;
+      Exception error = null;
+      NamingSupportImpl namingSupport = null;
+     
+      if (redirector == null) {
+        // no redirector
+        status = ServletRedirector.NOT_SUPPORTED;
       } else {
-        throw ite;
-      }
-    }
-    return (ServletEngine) ret;
-  }
+        // create naming wrapper
+        namingSupport = new NamingSupportImpl();
 
-  private void configureRootServlet() throws Exception {
-    this.rootReg = 
-      new RootServletRegistry(globReg);
-
-    Servlet welcomeServlet = new WelcomeServlet();
-    Servlet agentsServlet = new AgentsServlet(rootReg, globReg);
-    Servlet unknownNameServlet = 
-      new UnknownRootNameServlet(rootReg);
-    Servlet redirectServlet = 
-      new RootRedirectServlet(
-          globReg,
-          unknownNameServlet,
-          redirectTimeout);
-    RootServlet rootServlet = 
-      new RootServlet(
-          rootReg, 
-          localNode,
-          welcomeServlet,
-          agentsServlet,
-          redirectServlet);
-
-    servEng.setGateway(rootServlet);
-  }
-
-  /**
-   * Start the server, scan the port range based upon the
-   * "org.cougaar.lib.web.scanRange" property.
-   * <p>
-   * See the "@property" javadocs at the top of this file.
-   */
-  private void startServer() throws Exception {
-
-    // validate our parameters
-    if (scanRange < 1) {
-      throw new IllegalArgumentException(
-          "Port scan range must be at least 1, not \""+
-          scanRange+"\"");
-    }
-    if ((initHttpPort  > 0) &&
-        (initHttpsPort > 0) &&
-        (initHttpPort == initHttpsPort)) {
-      throw new IllegalArgumentException(
-          "HTTP port ("+initHttpPort+
-          ") and HTTPS port ("+initHttpsPort+
-          ") must be different!");
-    }
-
-    // set the scan range
-    int maxI = scanRange;
-
-    // FIXME notice |httpsPort-httpPort|, adjust maxI
-    //
-    // would make scanning more efficient...
-
-    int httpPort  = initHttpPort;
-    int httpsPort = initHttpsPort;
-
-    // scan the ports, try to launch the server
-    for (int i = 0; ; i++) {
-
-      if (i >= maxI) {
-        // failure; tried too many ports
-        String msg = 
-          "Unable to launch server"+
-          ((httpPort > 0) ? 
-           (", attempted "+maxI+" HTTP  ports ("+
-            httpPort+"-"+(httpPort +(maxI-1))+")") :
-           (""))+
-          ((httpPort > 0) ? 
-           (", attempted "+maxI+" HTTPS ports ("+
-            httpsPort+"-"+(httpsPort+(maxI-1))+")") :
-           (""));
-        if (log.isErrorEnabled()) {
-          log.error(msg);
+        // attempt redirect
+        try {
+          status = redirector.redirect(encName, options, namingSupport, req, res);
+        } catch (Exception e) {
+          status = ServletRedirector.OTHER_ERROR;
+          error = e;
+          e.printStackTrace();
         }
-        throw new BindException(msg);
+
+        if (status == ServletRedirector.REDIRECTED) {
+          // success or redirector-custom error page
+          return;
+        }
       }
 
-      if (log.isDebugEnabled()) {
-        log.debug(
-            "Server launch attempt["+i+" / "+maxI+"]:"+
-            ((httpPort > 0) ? 
-             (" HTTP  port ("+httpPort+")") :
-             (""))+
-            ((httpPort > 0) ? 
-             (" HTTPS port ("+httpsPort+")") :
-             ("")));
+      // write error page
+      int errorCode;
+      String header;
+      String message;
+      switch (status) {
+        case ServletRedirector.NOT_SUPPORTED:
+          errorCode = HttpServletResponse.SC_NOT_IMPLEMENTED;
+          header = "unsupported_redirect";
+          message = "Unsupported redirect options: "+options;
+          break;
+        case ServletRedirector.NO_NAMING_ENTRIES:
+          errorCode = HttpServletResponse.SC_NOT_FOUND;
+          header = "agent";
+          message = ("\""+encName+"\" Not Found");
+          break;
+        case ServletRedirector.DETECTED_LOOP:
+          errorCode = HttpServletResponse.SC_NOT_FOUND;
+          header = "stale_naming";
+          message = 
+            "Detected stale naming entries that would have resulted in a"+
+            " redirect loop: "+namingSupport.getNamingEntries(encName, -1);
+          break;
+        default:
+          errorCode = HttpServletResponse.SC_NOT_FOUND;
+          header = "other_error";
+          message = 
+            (error == null ? "Unspecified redirect error" :
+             "Redirect exception: "+error);
+          break;
       }
-
-      servEng.configure(
-          httpPort,
-          httpsPort,
-          config);
-
-      try {
-        servEng.start();
-        break;
-      } catch (BindException be) {
-        // port(s) in use, try again
-      }
-
-      if (httpPort > 0) {
-        ++httpPort;
-      }
-      if (httpsPort > 0) {
-        ++httpsPort;
-      }
+      res.setContentType("text/plain");
+      res.setStatus(errorCode);
+      res.addHeader("Cougaar-error", header);
+      PrintWriter out = res.getWriter();
+      out.println(message);
     }
 
-    // success; save the config
-    this.usedHttpPort  = httpPort;
-    this.usedHttpsPort = httpsPort;
+    private class NamingSupportImpl implements NamingSupport {
 
-    if (log.isInfoEnabled()) {
-      log.info(
-          "\nServer launched with: "+
-          ((httpPort > 0) ? 
-           ("\nHTTP : "+usedHttpPort) :
-           (""))+
-          ((httpPort > 0) ? 
-           ("\nHTTPS: "+usedHttpsPort) :
-           ("")));
+      private final Map cache = new HashMap();
+
+      public Map getNamingEntries(String encName, long timeout) {
+        // we keep a cache so we don't block for the same timeout for every
+        // redirector attempt, plus to make sure that all our redirectors see
+        // the same naming data snapshots.
+        synchronized (cache) {
+          Object o = cache.get(encName);
+          if (o instanceof Map) {
+            // found in cached
+            return (Map) o;
+          }
+          if (o instanceof Long) {
+            // check to see if our cached timeout is longer than the new one
+            long t = ((Long) o).longValue();
+            if (t < 0) {
+              if (timeout < 0) {
+                return null;
+              }
+            } else if (t == 0) {
+              return null;
+            } else {
+              if (timeout < 0 || (timeout > 0 && timeout <= t)) {
+                return null;
+              }
+            }
+          }
+          // do lookup
+          Map m;
+          try {
+            m = globReg.getAll(encName, timeout);
+          } catch (Exception e) {
+            // either timeout or real exception
+            m = null;
+          }
+          // convert from name->entry(type,uri) to type->uri
+          if (m != null && !m.isEmpty()) {
+            Map m2 = new HashMap(m.size());
+            for (Iterator iter = m.values().iterator(); iter.hasNext(); ) {
+              AddressEntry ae = (AddressEntry) iter.next();
+              m2.put(ae.getType(), ae.getURI());
+            }
+            m = Collections.unmodifiableMap(m2);
+          }
+          // cache result
+          o = m;
+          if (o == null) {
+            o = new Long(timeout);
+          }
+          cache.put(encName, o);
+          // return possibly null map
+          return m;
+        }
+      }
     }
   }
 
   /**
    * Service provider for our <code>RootServletService</code>.
    */
-  private class RootServletServiceProviderImpl
-  implements ServiceProvider {
+  private static class RootServletServiceProviderImpl implements ServiceProvider {
 
-    public Object getService(
-        ServiceBroker sb, 
-        Object requestor, 
-        Class serviceClass) {
-      // create a new service instance
-      if (serviceClass == RootServletService.class) {
-        return new RootServletServiceImpl();
-      } else {
-        throw new IllegalArgumentException(
-            "RootServletService does not provide a service for: "+
-            serviceClass);
+    private final ServletRegistry rootReg;
+    private final int httpPort;
+    private final int httpsPort;
+
+    public RootServletServiceProviderImpl(
+        ServletRegistry rootReg, Map namingEntries) {
+      this.rootReg = rootReg;
+      httpPort  = _extractPort(namingEntries, "http",  80);
+      httpsPort = _extractPort(namingEntries, "https", 443);
+    }
+
+    private static int _extractPort(Map m, String scheme, int deflt) {
+      if (m != null) {
+        Object o = m.get(scheme);
+        if (o instanceof URI) {
+          int port = ((URI) o).getPort();
+          return (port < 0 ? deflt : port);
+        }
       }
+      return -1;
+    }
+
+    public Object getService(ServiceBroker sb, Object req, Class cl) {
+      return 
+        (RootServletService.class.isAssignableFrom(cl) ? 
+         (new RootServletServiceImpl()) : null);
     }
 
     public void releaseService(
-        ServiceBroker sb, 
-        Object requestor, 
-        Class serviceClass, 
-        Object service)  {
+        ServiceBroker sb, Object req, Class cl, Object svc) {
       // unregister all servlets of this service instance
-      if (!(service instanceof RootServletServiceImpl)) {
-        throw new IllegalArgumentException(
-            "ServletService unable to release service: "+
-            ((service != null) ? service.getClass().toString() : "null"));
-      }
-      RootServletServiceImpl rssi =
-        (RootServletServiceImpl)service;
-      rssi.unregisterAll();
+      ((RootServletServiceImpl) svc).unregisterAll();
     }
 
-    private class RootServletServiceImpl
-    implements RootServletService {
+    private class RootServletServiceImpl implements RootServletService {
 
       // List of paths registered by this requestor; typically a 
       // tiny list.
@@ -643,17 +414,14 @@ implements Component
       // simultaneously register and unregister a Servlet...
       private final List l = new ArrayList(3);
 
-      public void register(
-          String path,
-          Servlet servlet) throws Exception {
+      public void register(String path, Servlet servlet) throws Exception {
         synchronized (l) {
           rootReg.register(path, servlet);
           l.add(path);
         }
       }
 
-      public void unregister(
-          String path) {
+      public void unregister(String path) {
         synchronized (l) {
           rootReg.unregister(path);
           l.remove(path);
@@ -671,14 +439,8 @@ implements Component
         }
       }
 
-      public int getHttpPort() {
-        return usedHttpPort;
-      }
-
-      public int getHttpsPort() {
-        return usedHttpsPort;
-      }
+      public int getHttpPort() { return httpPort; }
+      public int getHttpsPort() { return httpsPort; }
     }
   }
-
 }

@@ -23,6 +23,7 @@
  *  
  * </copyright>
  */
+
 package org.cougaar.lib.web.service;
 
 import java.io.IOException;
@@ -41,6 +42,7 @@ import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.cougaar.bootstrap.SystemProperties;
 import org.cougaar.lib.web.arch.ServletRegistry;
 import org.cougaar.lib.web.arch.root.GlobalRegistry;
 
@@ -101,77 +103,70 @@ import org.cougaar.lib.web.arch.root.GlobalRegistry;
  * co-located agents, regardless of where the named agent happens to
  * be located.
  *
- * @property org.cougaar.lib.web.list.split
+ * @property org.cougaar.lib.web.list.split=true
  *   "/agents" servlet boolean to split HTML links by "." separator
  *   for per-level "?suffix=" links.  Defaults to "true".
- * @property org.cougaar.lib.web.list.depth
+ * @property org.cougaar.lib.web.list.depth=5
  *   "/agents" servlet recursion depth for white pages listings,
- *   where -1 indicates no limit.  Defaults to 1.
- * @property org.cougaar.lib.web.list.size
+ *   where -1 indicates no limit.  Defaults to 5.
+ * @property org.cougaar.lib.web.list.size=-1
  *   "/agents" servlet size limit for white pages listings,
  *   where -1 indicates no limit.  Defaults to -1.
- * @property org.cougaar.lib.web.list.timeout
+ * @property org.cougaar.lib.web.list.timeout=-1
  *   "/agents" servlet timeout in millseconds for white pages
  *   listings, where -1 indicates block forever.  Defaults to -1.
  */
 public class AgentsServlet implements Servlet {
 
   private static final boolean SPLIT =
-    "true".equals(System.getProperty(
-          "org.cougaar.lib.web.list.split",
-          "true"));
+    SystemProperties.getBoolean("org.cougaar.lib.web.list.split", true);
   private static final int DEPTH =
-    Integer.getInteger(
-        "org.cougaar.lib.web.list.depth",
-        1).intValue();
+    SystemProperties.getInt("org.cougaar.lib.web.list.depth", 5);
   private static final int SIZE =
-    Integer.getInteger(
-        "org.cougaar.lib.web.list.size",
-        -1).intValue();
+    SystemProperties.getInt("org.cougaar.lib.web.list.size", -1);
   private static final long TIME =
-    Long.getLong(
-        "org.cougaar.lib.web.list.timeout",
-        -1).longValue();
+    SystemProperties.getLong("org.cougaar.lib.web.list.timeout", -1);
 
   private static final String path = "/agents";
+
+  private final String localNode;
 
   // read-only registries:
   private final ServletRegistry localReg;
   private final GlobalRegistry globReg;
 
   public AgentsServlet(
+      String localNode,
       ServletRegistry localReg,
       GlobalRegistry globReg) {
+    this.localNode = localNode;
     this.localReg = localReg;
     this.globReg = globReg;
 
-    // null-check
-    if ((localReg == null) ||
-        (globReg == null)) {
-      throw new NullPointerException();
+    String s =
+      (localNode == null ? "localNode" :
+       localReg == null ? "localReg" :
+       globReg == null ? "globReg" :
+       null);
+    if (s != null) {
+      throw new IllegalArgumentException("null "+s);
     }
   }
 
   public void service(
-      ServletRequest req,
-      ServletResponse res) throws ServletException, IOException {
+      ServletRequest sreq, ServletResponse sres
+      ) throws ServletException, IOException {
 
-    HttpServletRequest httpReq;
-    HttpServletResponse httpRes;
-    try {
-      httpReq = (HttpServletRequest) req;
-      httpRes = (HttpServletResponse) res;
-    } catch (ClassCastException cce) {
-      // not an HTTP request?
-      throw new ServletException("non-HTTP request or response");
-    }
+    HttpServletRequest req = (HttpServletRequest) sreq;
+    HttpServletResponse res = (HttpServletResponse) sres;
 
-    MyHandler h = new MyHandler(localReg, globReg);
-    h.execute(httpReq, httpRes);
+    MyHandler h = new MyHandler(localNode, localReg, globReg);
+    h.execute(req, res);
   }
 
   private static class MyHandler {
 
+    private final String localNode;
     private final ServletRegistry localReg;
     private final GlobalRegistry globReg;
 
@@ -194,8 +189,10 @@ public class AgentsServlet implements Servlet {
     private int serverPort;
 
     public MyHandler(
+        String localNode,
         ServletRegistry localReg,
         GlobalRegistry globReg) {
+      this.localNode = localNode;
       this.localReg = localReg;
       this.globReg = globReg;
     }
@@ -251,6 +248,11 @@ public class AgentsServlet implements Servlet {
          Long.parseLong(s_timeLimit));
 
       // sorted v.s. unsorted response
+      //
+      // TODO support option to sort by suffix, e.g.:
+      //    [ "x.a", "z.a", "y.b" ]
+      // instead of alphabetical, which in this case would split ".a":
+      //    [ "x.a", "y.b", "z.a" ]
       sorted = (!("false".equals(req.getParameter("sorted"))));
 
       // split HTML links
@@ -617,17 +619,25 @@ public class AgentsServlet implements Servlet {
         List names,
         Limit lim) {
       // pretty HTML
+      int n = names.size();
+      boolean isAll = (!isLocal && lim == null && ".".equals(encSuffix));
+      if (isAll) {
+        for (int i = 0; i < n; i++) {
+          String ni = (String) names.get(i);
+          if (ni.length() > 0 && ni.charAt(0) == '.') {
+            isAll = false;
+            break;
+          }
+        }
+      }
       String title =
-        "Agents "+
-        (isLocal ?
-         ("on Host ("+serverName+":"+serverPort+")") :
-         (((".".equals(encSuffix)) ?
-           "at the Root (\"" :
-           "with Suffix (\""+createSuffixLinks(encSuffix))+
-          "<a href="+
-          getLink(".", "html")+
-          ">.</a>"+
-          "\")"));
+        (isLocal ? ("Local agents on node "+localNode) :
+         isAll ? ("All agents in the society") :
+         ("All agents "+
+          (".".equals(encSuffix) ?
+           ("at the Root (\"") :
+           ("with Suffix (\""+createSuffixLinks(encSuffix)))+
+          "<a href="+getLink(".", "html")+">.</a>\")"));
       out.print("<html><head><title>");
       out.print(title);
       out.print(
@@ -635,16 +645,18 @@ public class AgentsServlet implements Servlet {
           "<body><p><h1>");
       out.print(title);
       out.print("</h1>\n");
-      int n = names.size();
       if (n > 0) {
         out.print("<table border=\"0\">\n");
         for (int i = 0; i < n; i++) {
           String ni = (String) names.get(i);
+          int j = ni.indexOf('.');
           out.print(
               ((i > 0) ? "</td></tr>\n" : "")+
               "<tr><td align=\"right\">&nbsp;"+
-              (i + 1)+".&nbsp;</td><td align=\"right\">");
-          int j = ni.indexOf('.');
+              (j == 0 ? "<b>" : "")+
+              (i + 1)+
+              (j == 0 ? "</b>" : "")+
+              ".&nbsp;</td><td align=\"right\">");
           if (split) {
             if (j != 0) {
               // print head(\.tail)?
@@ -685,12 +697,10 @@ public class AgentsServlet implements Servlet {
           "<p>\n"+
           "<a href="+
           getLink(null, "html")+
-          ">Agents on host ("+
-          serverName+":"+serverPort+
-          ")</a><br>\n"+
+          "><b>Local</b> agents on node "+localNode+"</a><br>\n"+
           "<a href="+
           getLink(".", "html")+
-          ">Agents at the root (.)</a><br>"+
+          "><b>All</b> agents in the society</a><br>"+
           "</body></html>\n");
     }
 
@@ -698,6 +708,7 @@ public class AgentsServlet implements Servlet {
     private String getLink(String suffix, String format) { 
       return
         "\""+
+        "/$"+localNode+
         "/agents"+
         "?suffix="+(suffix == null ? "" : suffix)+
         "&format="+format+

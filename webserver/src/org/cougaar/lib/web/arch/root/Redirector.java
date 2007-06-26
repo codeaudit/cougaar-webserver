@@ -1,7 +1,7 @@
 /*
  * <copyright>
  *  
- *  Copyright 2000-2004 BBNT Solutions, LLC
+ *  Copyright 2000-2007 BBNT Solutions, LLC
  *  under sponsorship of the Defense Advanced Research Projects
  *  Agency (DARPA).
  * 
@@ -23,44 +23,24 @@
  *  
  * </copyright>
  */
-
-package org.cougaar.lib.web.service;
+package org.cougaar.lib.web.arch.root;
 
 import java.io.IOException;
-import java.io.PrintWriter;
-
-import javax.servlet.Servlet;
-import javax.servlet.ServletConfig;
+import java.util.List;
 import javax.servlet.ServletException;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.cougaar.core.servlet.ComponentServlet;
-
 /**
- * This servlet handles "/robots.txt" requests with a hard-coded disallow
- * response:<tt><pre>
- *   User-agent: *
- *   Disallow: /
- * </pre></tt>to keep out web-crawlers, such as Google.
+ * Lookup the non-local root "name" and redirect / tunnel the client to the
+ * appropriate remote server.
+ *
+ * @param name parsed from {@link org.cougaar.lib.web.arch.util.PathParser}
  */
-public class BlockRobotsServlet extends ComponentServlet {
-
-  protected String getPath() {
-    String ret = super.getPath();
-    return (ret == null ? "/robots.txt" : ret);
-  }
-
-  public void doGet(
-      HttpServletRequest req, HttpServletResponse res
-      ) throws ServletException, IOException {
-
-    // write blocking response
-    res.setContentType("text/plain");
-    PrintWriter out = res.getWriter();
-    out.print("User-agent: *\nDisallow: /\n");
-    out.close();
-  }
+public interface Redirector {
+  void redirect(
+      String name,
+      List options,
+      HttpServletRequest req,
+      HttpServletResponse res) throws ServletException, IOException;
 }

@@ -23,6 +23,7 @@
  *  
  * </copyright>
  */
+
 package org.cougaar.lib.web.service;
 
 import java.io.IOException;
@@ -45,35 +46,23 @@ import org.cougaar.lib.web.arch.root.GlobalRegistry;
  * A servlet that generates a top-level HTML welcome page in response
  * to the "/" path.
  */
-public class WelcomeServlet 
-implements Servlet {
+public class WelcomeServlet implements Servlet {
+
+  private final String localNode;
+
+  public WelcomeServlet(String localNode) {
+    this.localNode = localNode;
+  }
 
   public void service(
-      ServletRequest req,
-      ServletResponse res) throws ServletException, IOException {
+      ServletRequest sreq, ServletResponse sres
+      ) throws ServletException, IOException {
 
-    HttpServletRequest httpReq;
-    HttpServletResponse httpRes;
-    try {
-      httpReq = (HttpServletRequest) req;
-      httpRes = (HttpServletResponse) res;
-    } catch (ClassCastException cce) {
-      // not an HTTP request?
-      throw new ServletException("non-HTTP request or response");
-    }
+    // cast
+    HttpServletRequest req = (HttpServletRequest) sreq;
+    HttpServletResponse res = (HttpServletResponse) sres;
 
-    handle(httpReq, httpRes);
-  }
-
-  private final void handle(
-      HttpServletRequest req,
-      HttpServletResponse res) throws ServletException, IOException {
-    displayWelcome(req, res);
-  }
-
-  private final void displayWelcome(
-      HttpServletRequest req,
-      HttpServletResponse res) throws ServletException, IOException {
+    // write response
     res.setContentType("text/html");
     PrintWriter out = res.getWriter();
     out.print(
@@ -83,32 +72,19 @@ implements Servlet {
       "<h2>Welcome to "+
       "<a href=\"http://www.cougaar.org\">Cougaar</a></h2>\n"+
       "Options:<ul>\n"+
-      "<li><a href=\"/agents\">Agents on host ("+
-      req.getServerName()+":"+req.getServerPort()+
-      ")</a></li><p>\n"+
-      "<li><a href=\"/agents?suffix=.\">Agents at the root (.)</a>"+
+      "<li><a href=\"/agents\"><b>Local</b> agents on node "+localNode+
+      "</a></li><p>\n"+
+      "<li><a href=\"/agents?suffix=.\"><b>All</b> agents in the society</a>"+
       "</li>\n"+
       "</ul>\n"+
       "</body></html>");
     out.close();
   }
 
-  //
-  // other Servlet methods
-  //
-
+  // etc
   private ServletConfig config;
-  public void init(ServletConfig config) {
-    this.config = config;
-  }
-  public ServletConfig getServletConfig() {
-    return config;
-  }
-  public String getServletInfo() {
-    return "welcome";
-  }
-  public void destroy() {
-    // ignore
-  }
-
+  public void init(ServletConfig config) { this.config = config; }
+  public ServletConfig getServletConfig() { return config; }
+  public String getServletInfo() { return "welcome"; }
+  public void destroy() { }
 }

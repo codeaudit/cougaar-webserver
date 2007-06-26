@@ -174,7 +174,7 @@
     <property name="compile.abs.jarlist" value=""/>
 
     <!-- javadoc package spec for building javadocs -->
-    <property name="javadoc.packages" value="org.cougaar.lib.web.arch,org.cougaar.lib.web.arch.leaf,org.cougaar.lib.web.arch.root,org.cougaar.lib.web.arch.server,org.cougaar.lib.web.arch.util,org.cougaar.lib.web.service"/>
+    <property name="javadoc.packages" value="org.cougaar.lib.web.arch,org.cougaar.lib.web.arch.leaf,org.cougaar.lib.web.arch.root,org.cougaar.lib.web.arch.server,org.cougaar.lib.web.arch.util,org.cougaar.lib.web.service,org.cougaar.lib.web.engine,org.cougaar.lib.web.redirect"/>
 
     <!-- Extra jars needed at run / unit-test time. -->
     <!-- WARNING: Only relative paths work here. -->

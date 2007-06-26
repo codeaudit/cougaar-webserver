@@ -1,7 +1,7 @@
 /*
  * <copyright>
  *  
- *  Copyright 2000-2004 BBNT Solutions, LLC
+ *  Copyright 2000-2007 BBNT Solutions, LLC
  *  under sponsorship of the Defense Advanced Research Projects
  *  Agency (DARPA).
  * 
@@ -23,44 +23,27 @@
  *  
  * </copyright>
  */
+package org.cougaar.lib.web.redirect;
 
-package org.cougaar.lib.web.service;
-
-import java.io.IOException;
-import java.io.PrintWriter;
-
-import javax.servlet.Servlet;
-import javax.servlet.ServletConfig;
-import javax.servlet.ServletException;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
-import org.cougaar.core.servlet.ComponentServlet;
+import java.util.Map;
 
 /**
- * This servlet handles "/robots.txt" requests with a hard-coded disallow
- * response:<tt><pre>
- *   User-agent: *
- *   Disallow: /
- * </pre></tt>to keep out web-crawlers, such as Google.
+ * Naming support for the {@link ServletRedirector}.
  */
-public class BlockRobotsServlet extends ComponentServlet {
+public interface NamingSupport {
 
-  protected String getPath() {
-    String ret = super.getPath();
-    return (ret == null ? "/robots.txt" : ret);
-  }
+  /**
+   * Lookup all the entries for the given name.
+   * <p>
+   * Typically a new instance is created for each {@link #redirect} call and
+   * will cache the entries for each unique "encName".
+   *
+   * @param encName the URL-encoded remote agent name
+   * @param timeout timeout on lookup in milliseconds, zero for no
+   *   timeout, or negative for non-blocking lookup.
+   * @return the naming service entries, or null if the naming service could
+   *   not be accessed.
+   */
+  Map getNamingEntries(String encName, long timeout);
 
-  public void doGet(
-      HttpServletRequest req, HttpServletResponse res
-      ) throws ServletException, IOException {
-
-    // write blocking response
-    res.setContentType("text/plain");
-    PrintWriter out = res.getWriter();
-    out.print("User-agent: *\nDisallow: /\n");
-    out.close();
-  }
 }

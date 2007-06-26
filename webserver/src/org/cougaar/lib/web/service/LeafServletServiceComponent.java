@@ -23,6 +23,7 @@
  *  
  * </copyright>
  */
+
 package org.cougaar.lib.web.service;
 
 import java.net.URLEncoder;
@@ -47,12 +48,11 @@ import org.cougaar.lib.web.arch.leaf.LeafToRootRedirectServlet;
 import org.cougaar.util.GenericStateModelAdapter;
 
 /**
- * This component advertises the agent-internal {@link
- * ServletService}, based upon the node-level {@link
- * RootServletService}.
+ * This component advertises the agent-internal {@link ServletService}, based
+ * upon the node-level {@link RootServletService}.
  * <p>
- * This component also blocks the RootServletService, since
- * agent components should use the ServletService.
+ * This component also blocks the RootServletService, since agent components
+ * should use the ServletService.
  */
 public class LeafServletServiceComponent 
 extends GenericStateModelAdapter
@@ -103,8 +103,7 @@ implements Component
         sb.getService(this, RootServletService.class, null);
       if (rootServletService == null) {
         throw new RuntimeException(
-            "Leaf servlet-service unable to"+
-            " obtain RootServletService");
+            "Leaf servlet-service unable to obtain RootServletService");
       }
     }
 

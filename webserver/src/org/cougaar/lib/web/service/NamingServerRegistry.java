@@ -23,6 +23,7 @@
  *  
  * </copyright>
  */
+
 package org.cougaar.lib.web.service;
 
 import java.io.IOException;
@@ -34,6 +35,7 @@ import java.net.URLEncoder;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Set;
 
 import org.cougaar.core.service.wp.AddressEntry;
@@ -45,79 +47,46 @@ import org.cougaar.util.log.Logger;
 import org.cougaar.util.log.Logging;
 
 /**
- * Implementation of {@link GlobalRegistry} that uses the
+ * An implementation of {@link GlobalRegistry} that uses the
  * {@link WhitePagesService}.
  */
-public class NamingServerRegistry 
-implements GlobalRegistry {
+public class NamingServerRegistry implements GlobalRegistry {
 
   private static final Logger logger = Logging.getLogger(NamingServerRegistry.class);
 
   private final WhitePagesService wp;
 
-  private InetAddress httpAddr;
-  private InetAddress httpsAddr;
-  private int httpPort = -1;
-  private int httpsPort = -1;
+  private Map namingEntries;
 
   public NamingServerRegistry(WhitePagesService wp) {
     this.wp = wp;
   }
 
-  public void configure(
-      int httpPort,
-      int httpsPort) throws IOException {
-    InetAddress localAddr = InetAddress.getLocalHost();
-    this.httpAddr = localAddr;
-    this.httpPort = httpPort;
-    this.httpsAddr = localAddr;
-    this.httpsPort = httpsPort;
+  public void configure(Map namingEntries) {
+    this.namingEntries = namingEntries;
   }
 
-  public void rebind(String encName) throws IOException {
-    update(true, encName, "http",  httpAddr,  httpPort);
-    update(true, encName, "https", httpsAddr, httpsPort);
+  public void rebind(String encName) {
+    update(true, encName);
   }
 
-  public void unbind(String encName) throws IOException {
-    update(false, encName, "http",  httpAddr,  httpPort);
-    update(false, encName, "https", httpsAddr, httpsPort);
+  public void unbind(String encName) {
+    update(false, encName);
   }
 
-  private void update(
-      boolean bind,
-      String encName,
-      String scheme,
-      InetAddress addr,
-      int port) {
-    if (port < 0) {
-      return;
-    }
-
+  private void update(boolean bind, String encName) {
     if (encName == null) {
       throw new NullPointerException();
     }
 
-    // register in white pages
-    URI uri = URI.create(
-      scheme+
-      "://"+
-      addr.getHostName()+
-      ":"+
-      port+
-      "/$"+
-      encName);
-    String rawName = decode(encName);
-    AddressEntry entry =
-      AddressEntry.getAddressEntry(
-        rawName, scheme, uri);
+    if (namingEntries == null || namingEntries.isEmpty()) {
+      return;
+    }
 
     if (wp == null) {
       if (logger.isInfoEnabled()) {
         logger.info(
-            "Ignoring servlet WP "+
-            (bind ? "re" : "un")+
-            "bind("+entry+")");
+            "Ignoring servlet WP "+(bind ? "re" : "un")+"bind for "+encName);
       }
       return;
     }
@@ -135,56 +104,48 @@ implements GlobalRegistry {
     };
 
     try {
-      if (bind) {
-        wp.rebind(entry, callback);
-      } else {
-        wp.unbind(entry, callback);
+      String rawName = decode(encName);
+      for (Iterator iter = namingEntries.entrySet().iterator();
+          iter.hasNext();
+          ) {
+        Map.Entry me = (Map.Entry) iter.next();
+        String key = (String) me.getKey();
+        URI value = (URI) me.getValue();
+        AddressEntry entry = AddressEntry.getAddressEntry(rawName, key, value);
+
+        if (bind) {
+          wp.rebind(entry, callback);
+        } else {
+          wp.unbind(entry, callback);
+        }
       }
     } catch (Exception e) {
       throw new RuntimeException(
-        "Unable to "+(bind?"":"un")+"bind("+entry+")", e);
+        "Unable to "+(bind?"":"un")+"bind "+encName, e);
     }
   }
 
-  public URI get(
-      final String encName,
-      final String scheme,
-      final long timeout) throws IOException {
-    // check the url-encoded name
+  public Map getAll(String encName, long timeout) {
     if (encName == null || encName.length() == 0) {
       return null;
     }
-    // check the scheme
-    if (scheme == null || scheme.length() == 0) {
-      return null;
-    }
-
-    String rawName = decode(encName);
 
     if (wp == null) {
       if (logger.isInfoEnabled()) {
-        logger.info(
-            "Ignoring servlet WP get("+
-            rawName+", "+scheme+", "+timeout+")");
+        logger.info("Ignoring servlet WP get for "+encName+")");
       }
       return null;
     }
 
-    AddressEntry ae;
     try {
-      ae = wp.get(rawName, scheme, timeout);
+      String rawName = decode(encName);
+      return wp.getAll(rawName, timeout);
     } catch (Exception e) {
-      throw new RuntimeException(
-          "Unable to get("+rawName+")", e);
+      throw new RuntimeException("Unable to getAll "+encName, e);
     }
-    URI uri = (ae == null ? null : ae.getURI());
-
-    return uri;
   }
 
-  public Set list(
-      String encSuffix,
-      long timeout) throws IOException {
+  public Set list(String encSuffix, long timeout) {
     String rawSuffix = decode(encSuffix);
 
     if (wp == null) {
