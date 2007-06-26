@@ -38,18 +38,16 @@ import javax.servlet.ServletException;
 import javax.servlet.jsp.JspFactory;
 
 import org.apache.catalina.LifecycleException;
-import org.cougaar.lib.web.arch.server.ServletEngine;
+import org.cougaar.lib.web.engine.AbstractServletEngine;
 
 /**
- * Implementation of <code>ServletEngine</code> for Tomcat 4.0.3.
+ * This component is a Tomcat 4.0.3 -based implementation of the
+ * {@link org.cougaar.lib.web.engine.ServletEngineService}.
  * <p>
- * The <tt>TomcatServletEngine(String[])</tt> constructor requires 
- * one argument:
- * <ol>
- *   </li>the full path to the Tomcat base directory</li>
- * </ol><br>
- * <p>
- * The directory must contain these files:
+ * A "tomcat.path" parameter is required, which defaults to:<pre>
+ *   $CIP/webtomcat/data
+ * </pre>
+ * This directory must contain these files:
  * <ul>
  *   <li>conf/server.xml</li>
  *   <li>conf/modules.xml</li>
@@ -59,12 +57,10 @@ import org.cougaar.lib.web.arch.server.ServletEngine;
  * Where the above "/" directory separator matches the OS-specific
  * character defined in File.
  * <p>
- * Example files are in "webtomcat/data" and should not be 
- * modified.
+ * Example files are in "webtomcat/data" and should not be modified.
  */
-public class TomcatServletEngine
-  implements ServletEngine 
-{
+public class TomcatServletEngine extends AbstractServletEngine {
+
   private static final String SEP = File.separator;
 
   private static final String[] CONFIG_FILES = {
@@ -76,32 +72,13 @@ public class TomcatServletEngine
   private static final String JSP_FACTORY =
     "org.apache.jasper.runtime.JspFactoryImpl";
 
-  private final String installPath;
-
   private Map serverOptions;
   private int httpPort;
   private int httpsPort;
   private Map httpOptions;
   private Map httpsOptions;
 
-  private boolean isRunning = false;
-
   private EmbeddedTomcat et;
-
-  public TomcatServletEngine(Object arg) {
-    if (!(arg instanceof String)) {
-      throw new IllegalArgumentException(
-          "Tomcat ServletEngine expects a single String argument,"+
-          " \"installPath\", not "+
-          ((arg != null) ? arg.getClass().getName() : "null"));
-    }
-    String s = (String) arg;
-
-    this.installPath = s;
-
-    // verify the necessary config files
-    verifyConfigFiles();
-  }
 
   /**
    * Verify that the config files exist.
@@ -110,17 +87,20 @@ public class TomcatServletEngine
    *
    * @throws RuntimeException if necessary files are missing
    */
-  private void verifyConfigFiles() {
+  private void verifyConfigFiles(String installPath) {
+    // check args
+    if (installPath == null) {
+      throw new RuntimeException("null \"tomcat.path\"");
+    }
+
     // check the standard config files
     for (int i = 0; i < CONFIG_FILES.length; i++) {
       String s = installPath+SEP+CONFIG_FILES[i];
       File f = new File(s);
       if (!(f.exists())) {
-        throw new RuntimeException(
-            "Missing Tomcat config file: "+s);
+        throw new RuntimeException("Missing Tomcat config file: "+s);
       } else if (!(f.canRead())) {
-        throw new RuntimeException(
-            "Unable to read Tomcat config file: "+s);
+        throw new RuntimeException("Unable to read Tomcat config file: "+s);
       }
     }
 
@@ -131,33 +111,22 @@ public class TomcatServletEngine
     String workS = installPath+SEP+"work";
     File workDir = new File(workS);
     if (!(workDir.exists())) {
-      throw new RuntimeException(
-          "Missing Tomcat work directory: "+
-          workS);
+      throw new RuntimeException("Missing Tomcat work directory: "+workS);
     } else if (!(workDir.isDirectory())) {
       throw new RuntimeException(
-          "Tomcat work \"directory\" is not a directory: "+
-          workS);
+          "Tomcat work \"directory\" is not a directory: "+workS);
     } else if ((!(workDir.canRead())) ||
                (!(workDir.canWrite()))) {
       throw new RuntimeException(
-          "Unable to open Tomcat work directory"+
-          " for read/write access: "+
+          "Unable to open Tomcat work directory for read/write access: "+
           workS);
     }
 
     // they all exist -- let Tomcat validate the contents
   }
 
-  public void configure(
-      int httpPort,
-      int httpsPort,
-      Map options) {
-    if (isRunning()) {
-      throw new IllegalStateException(
-          "Unable to configure a running Tomcat");
-    }
-
+  protected void configure(int httpPort, int httpsPort, Map options) {
+    // save ports
     this.httpPort = httpPort;
     this.httpsPort = httpsPort;
 
@@ -181,25 +150,39 @@ public class TomcatServletEngine
         // ignore?
       }
     }
+    
+    // set tomcat-specific defaults
+    String installPath = (String) serverOptions.get("tomcat.path");
+    if (installPath == null) {
+      // backwards-compatible argument name
+      installPath = (String) serverOptions.get("server.arg");
+    }
+    if (installPath == null) {
+      // look for tomcat config files in RUNTIME, SOCIETY, then INSTALL
+      for (int i = 0; i < 3; i++) {
+        String s = (i == 0 ? "runtime" : i == 1 ? "society" : "install");
+        String base = System.getProperty("org.cougaar."+s+".path");
+        if (base != null) {
+          String path = base+SEP+"webtomcat"+SEP+"data";
+          if ((new File(path)).isDirectory()) {
+            serverOptions.put("tomcat.path", path);
+            break;
+          }
+        }
+      }
+    }
   }
 
-  public boolean isRunning() {
-    return isRunning;
-  }
-
-  public void start() throws BindException {
-
-    if (isRunning()) {
+  protected void startServer() throws BindException {
+    // check ports
+    if ((httpPort <= 0) && (httpsPort <= 0)) {
       throw new IllegalStateException(
-          "Tomcat is currently running");
+          "Nothing to start -- both HTTP and HTTPS ports are negative");
     }
 
-    if ((httpPort <= 0) &&
-        (httpsPort <= 0)) {
-      throw new IllegalStateException(
-          "Nothing to start -- both HTTP and HTTPS"+
-          " ports are negative");
-    }
+    // verify the necessary config files
+    String installPath = (String) serverOptions.get("tomcat.path");
+    verifyConfigFiles(installPath);
 
     // launch tomcat with specified ports
     // tomcat automatically loads the HookServlet due to XML scripts
@@ -208,7 +191,7 @@ public class TomcatServletEngine
       // quick-check to see if the ports are free
       try {
         if (httpPort  > 0) {
-          (new ServerSocket(httpPort )).close();
+          (new ServerSocket(httpPort)).close();
         }
         if (httpsPort > 0) {
           (new ServerSocket(httpsPort)).close();
@@ -224,7 +207,7 @@ public class TomcatServletEngine
 
       et.setInstall(installPath);
 
-      ClassLoader cl = this.getClass().getClassLoader();
+      ClassLoader cl = getClass().getClassLoader();
       if (cl == null) {
         cl = ClassLoader.getSystemClassLoader();
       }
@@ -238,15 +221,11 @@ public class TomcatServletEngine
       }
       
       if (httpPort > 0) {
-        et.addEndpoint(
-            httpPort,
-            httpOptions);
+        et.addEndpoint(httpPort, httpOptions);
       }
 
       if (httpsPort > 0) {
-        et.addSecureEndpoint(
-            httpsPort,
-            httpsOptions);
+        et.addSecureEndpoint(httpsPort, httpsOptions);
       }
 
       et.embeddedStart();
@@ -266,11 +245,9 @@ public class TomcatServletEngine
           }
         }
       }
-      throw new RuntimeException(
-          "Tomcat-internal exception: ", te);
+      throw new RuntimeException("Tomcat-internal exception: ", te);
     } catch (Exception e) {
-      throw new RuntimeException(
-          "Unknown Tomcat exception: ", e);
+      throw new RuntimeException("Unknown Tomcat exception: ", e);
     }
 
     if (JspFactory.getDefaultFactory() == null) {
@@ -287,20 +264,13 @@ public class TomcatServletEngine
         //     org/apache/jasper/runtime/HttpJspBase
       }
     }
-
-    this.isRunning = true;
   }
 
-  public void setGateway(Servlet servlet) throws ServletException {
+  protected void setGateway(Servlet servlet) throws ServletException {
     HookServlet.setServlet(servlet);
   }
 
-  public void stop() {
-    if (!(isRunning())) {
-      throw new IllegalStateException(
-          "Tomcat not running");
-    }
-
+  protected void stopServer() {
     try {
       setGateway(null);
 
@@ -313,11 +283,5 @@ public class TomcatServletEngine
     }
      
     // discard configuration
-
-    this.isRunning = false;
-  }
-
-  public String toString() {
-    return "Tomcat ServletEngine";
   }
 }
