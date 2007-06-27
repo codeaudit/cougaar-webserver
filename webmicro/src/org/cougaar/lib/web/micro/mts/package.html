@@ -1,0 +1,44 @@
+<body>
+This package contains the <a href="http://cougaar.org">Cougaar</a>
+message-transport-based servlet engine and tunnel.
+<p>
+The only way into this mts-engine is through a remote mts-tunnel.  The
+local engine and remote tunnel coordinate by passing "pipe-messages" between
+one another.
+<p>
+Together, the mts-engine and mts-tunnel can be used to tunnel remote servlet
+requests to nodes that are only reachable through the message transport.  For
+example:<pre>
+  Node A is running the http-engine, http-redirector, and mts-tunnel
+  Node B is running the mts-engine 
+</pre>
+This configuration may be required in embedded environments, or where node B
+is not allowed to open a listening port.  A browser request to node A for an
+agent on node B will be sent through the mts-tunnel, since B's mts-engine will
+only register a WP entry for its mts-tunnel (it doesn't have a host:port
+address).  If the configuration has both nodes running:<pre>
+  http-engine, mts-engine, http-redirector, mts-tunnel
+</pre>
+then (by default) the http-redirector will be attempted, since it's loaded
+first.  The user can override this behavior on the URL line, e.g.:<pre>
+  http://host_a:1234/$(mts_tunnel)NodeB/some_path
+</pre>
+This manual override would be required if these nodes are only reachable via
+the message transport.  A {@link 
+org.cougaar.lib.web.redirect.ServletRedirectorRegistry} parameter can be
+specified to set the default behavior.
+<p>
+For more information about URL-line options, see {@link
+org.cougaar.lib.web.arch.util.PathParser}.
+<p>
+The "pipe" and "factory" class are generic utilities that create a stream
+wrapper on top of Cougaar's package-oriented messaging support.  These
+classes could be used to support other, non-servlet, stream-oriented
+applications.
+<p>
+Instead of using the "base" ServletEngineImpl, it might be feasible to create
+a Tomcat "connector" backend.
+<p>
+For more detail, see the
+<a href="http://docs.cougaar.org">Cougaar Developers' Guide</a>.
+</body>
