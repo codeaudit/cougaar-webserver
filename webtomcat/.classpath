@@ -5,5 +5,6 @@
 	<classpathentry exported="true" kind="lib" path="/jars/lib/tomcat_40.jar"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/webserver"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/core"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/util"/>
 	<classpathentry kind="output" path="tmp/classes"/>
 </classpath>
