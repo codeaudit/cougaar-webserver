@@ -10,8 +10,10 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="module" module-name="core" exported="" />
-    <orderEntry type="module-library" exported="">
+    <orderEntry type="module" module-name="bootstrap" />
+    <orderEntry type="module" module-name="util" />
+    <orderEntry type="module" module-name="core" />
+    <orderEntry type="module-library">
       <library>
         <CLASSES>
           <root url="jar://$MODULE_DIR$/../jars/lib/servlet.jar!/" />

@@ -10,11 +10,21 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="module" module-name="webserver" exported="" />
+    <orderEntry type="module" module-name="util" />
+    <orderEntry type="module" module-name="webserver" />
     <orderEntry type="module-library">
       <library>
         <CLASSES>
           <root url="jar://$MODULE_DIR$/../jars/lib/tomcat_40.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library>
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/../jars/lib/servlet.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />
