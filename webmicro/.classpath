@@ -5,7 +5,6 @@
 	<classpathentry kind="lib" path="/jars/lib/servlet.jar"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/bootstrap"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/core"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/mtsstd"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/util"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/webserver"/>
 	<classpathentry kind="output" path="tmp/classes"/>
