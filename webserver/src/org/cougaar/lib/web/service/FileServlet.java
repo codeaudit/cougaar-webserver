@@ -56,42 +56,28 @@ public class FileServlet extends ComponentServlet {
   private static final String BASE_PATH =
     SystemProperties.getProperty("org.cougaar.install.path");
 
+  protected long getLastModified(HttpServletRequest request) {
+    File file = locateFile(getFilename(request));
+    long lastMod = file.lastModified();
+    return (lastMod > 0 ? lastMod : -1);
+  }
+
   public void doGet(
       HttpServletRequest request,
       HttpServletResponse response) throws IOException {
-    // get filename
-    String filename = request.getPathInfo();
-    if (filename != null) {
-      filename = filename.trim();
-      if (filename.length() == 0) {
-        filename = null;
-      }
-    }
-    if (filename == null) {
-      filename = "/";
-    }
+    String filename = getFilename(request);
+    File file = locateFile(filename);
 
-    // trim leading and trailing "/"s
-    //
-    // Our servlet engine catches any bad paths, e.g. "//" and ".."
-    boolean listFiles = filename.endsWith("/");
-    if (listFiles) {
-      filename = filename.substring(0, filename.length()-1);
-    }
-    if (filename.startsWith("/")) {
-      filename = filename.substring(1);
-    }
-
-    if (listFiles) {
+    if (file.isDirectory()) {
       // write directory listing
       File[] fa;
       try {
-        File dir = locateFile(filename);
-        fa = dir.listFiles();
+        fa = file.listFiles();
       } catch (Exception e) {
         response.setStatus(HttpServletResponse.SC_NOT_FOUND);
         return;
       }
+
       PrintWriter out = response.getWriter();
       String title = "Index of "+filename;
       out.println("<html>\n<head>\n<title>"+title+"</title>\n</head>\n<body>\n");
@@ -120,42 +106,74 @@ public class FileServlet extends ComponentServlet {
       }
       out.println("</ul>\n</body></html>");
       out.flush();
-      return;
-    }
+      out.close();
 
-    // open stream
-    InputStream fin;
-    try {
-      fin = open(filename);
-    } catch (IOException ioe) {
-      response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-      return;
-    }
-
-    // set content type
-    String contentType = URLConnection.guessContentTypeFromStream(fin);
-    if (contentType != null) {
-      response.setContentType(contentType);
-    }
-
-    // maybe add "Expires" header?  See FavIconServlet for an example.
-
-    // write data
-    OutputStream out = response.getOutputStream();
-    byte[] buf = new byte[2048];
-    while (true) {
-      int len = fin.read(buf);
-      if (len < 0) {
-        break;
+    } else if (file.exists()) {
+      // open stream
+      InputStream fin;
+      try {
+        fin = open(filename);
+      } catch (IOException ioe) {
+        response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+        return;
       }
-      out.write(buf, 0, len);
+
+      // set content type
+      String contentType = URLConnection.guessContentTypeFromStream(fin);
+      if (contentType != null) {
+        response.setContentType(contentType);
+      }
+
+      // write data
+      OutputStream out = response.getOutputStream();
+      byte[] buf = new byte[2048];
+      while (true) {
+        int len = fin.read(buf);
+        if (len < 0) {
+          break;
+        }
+        out.write(buf, 0, len);
+      }
+      fin.close();
+      out.flush();
+      out.close();
+
+    } else {
+      // not found
+      response.setStatus(HttpServletResponse.SC_NOT_FOUND);
     }
-    fin.close();
-    out.flush();
-    out.close();
   }
 
   // maybe add "doPut" for file upload/overwrite?
+
+  /**
+   * Get the filename parameter, which defaults to "".
+   * <p>
+   * We trim leading and trailing "/"s.  Note that our servlet engine catches
+   * any bad paths, e.g. "//" and "..".
+   */
+  private String getFilename(HttpServletRequest request) {
+    // get filename
+    String filename = request.getPathInfo();
+    if (filename != null) {
+      filename = filename.trim();
+      if (filename.length() == 0) {
+        filename = null;
+      }
+    }
+    if (filename == null) {
+      filename = "/";
+    }
+
+    // trim
+    if (filename.endsWith("/")) {
+      filename = filename.substring(0, filename.length()-1);
+    }
+    if (filename.startsWith("/")) {
+      filename = filename.substring(1);
+    }
+    return filename;
+  }
 
   private File locateFile(String filename) {
     return new File(BASE_PATH, filename);
