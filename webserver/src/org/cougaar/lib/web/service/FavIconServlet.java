@@ -30,9 +30,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.List;
 
 import javax.servlet.Servlet;
@@ -87,20 +84,9 @@ public class FavIconServlet extends ComponentServlet {
       ) throws ServletException, IOException {
 
     // set "Expires" header to force browser-side caching
-    String expireDate = null;
     if (expireMillis > 0) {
-      try {
-        long now = System.currentTimeMillis();
-        long expireTime = now + expireMillis;
-        String format = "EEE, dd MMM yyyy HH:mm:ss zzz";
-        DateFormat formatter = new SimpleDateFormat(format);
-        expireDate = formatter.format(new Date(expireTime));
-      } catch (Exception e) {
-        // ignore, shouldn't happen
-      }
-    }
-    if (expireDate != null) {
-      res.setHeader("Expires", expireDate);
+      long expireTime = System.currentTimeMillis() + expireMillis;
+      res.setDateHeader("Expires", expireTime);
     }
 
     // read icon data to buffer
