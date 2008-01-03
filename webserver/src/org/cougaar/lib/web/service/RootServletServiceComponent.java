@@ -55,6 +55,7 @@ import org.cougaar.lib.web.arch.root.RootServlet;
 import org.cougaar.lib.web.arch.root.RootServletRegistry;
 import org.cougaar.lib.web.engine.ServletEngineService;
 import org.cougaar.lib.web.redirect.NamingSupport;
+import org.cougaar.lib.web.redirect.RedirectorWrapper;
 import org.cougaar.lib.web.redirect.ServletRedirector;
 import org.cougaar.lib.web.redirect.ServletRedirectorService;
 import org.cougaar.util.GenericStateModelAdapter;
@@ -168,7 +169,7 @@ implements Component
             localNode,
             new WelcomeServlet(localNode),
             new AgentsServlet(localNode, rootReg, globReg),
-            new RedirectorWrapper());
+            new RedirectorWrapper(redirector, globReg));
     } catch (Exception e) {
       throw new RuntimeException("Unable to create root servlet", e);
     }
@@ -233,136 +234,6 @@ implements Component
   //
   // inner classes:
   //
-
-  private class RedirectorWrapper implements Redirector {
-
-    public void redirect(
-        String encName,
-        List options,
-        HttpServletRequest req,
-        HttpServletResponse res) throws ServletException, IOException {
-
-      int status;
-      Exception error = null;
-      NamingSupportImpl namingSupport = null;
-     
-      if (redirector == null) {
-        // no redirector
-        status = ServletRedirector.NOT_SUPPORTED;
-      } else {
-        // create naming wrapper
-        namingSupport = new NamingSupportImpl();
-
-        // attempt redirect
-        try {
-          status = redirector.redirect(encName, options, namingSupport, req, res);
-        } catch (Exception e) {
-          status = ServletRedirector.OTHER_ERROR;
-          error = e;
-          e.printStackTrace();
-        }
-
-        if (status == ServletRedirector.REDIRECTED) {
-          // success or redirector-custom error page
-          return;
-        }
-      }
-
-      // write error page
-      int errorCode;
-      String header;
-      String message;
-      switch (status) {
-        case ServletRedirector.NOT_SUPPORTED:
-          errorCode = HttpServletResponse.SC_NOT_IMPLEMENTED;
-          header = "unsupported_redirect";
-          message = "Unsupported redirect options: "+options;
-          break;
-        case ServletRedirector.NO_NAMING_ENTRIES:
-          errorCode = HttpServletResponse.SC_NOT_FOUND;
-          header = "agent";
-          message = ("\""+encName+"\" Not Found");
-          break;
-        case ServletRedirector.DETECTED_LOOP:
-          errorCode = HttpServletResponse.SC_NOT_FOUND;
-          header = "stale_naming";
-          message = 
-            "Detected stale naming entries that would have resulted in a"+
-            " redirect loop: "+namingSupport.getNamingEntries(encName, -1);
-          break;
-        default:
-          errorCode = HttpServletResponse.SC_NOT_FOUND;
-          header = "other_error";
-          message = 
-            (error == null ? "Unspecified redirect error" :
-             "Redirect exception: "+error);
-          break;
-      }
-      res.setContentType("text/plain");
-      res.setStatus(errorCode);
-      res.addHeader("Cougaar-error", header);
-      PrintWriter out = res.getWriter();
-      out.println(message);
-    }
-
-    private class NamingSupportImpl implements NamingSupport {
-
-      private final Map cache = new HashMap();
-
-      public Map getNamingEntries(String encName, long timeout) {
-        // we keep a cache so we don't block for the same timeout for every
-        // redirector attempt, plus to make sure that all our redirectors see
-        // the same naming data snapshots.
-        synchronized (cache) {
-          Object o = cache.get(encName);
-          if (o instanceof Map) {
-            // found in cached
-            return (Map) o;
-          }
-          if (o instanceof Long) {
-            // check to see if our cached timeout is longer than the new one
-            long t = ((Long) o).longValue();
-            if (t < 0) {
-              if (timeout < 0) {
-                return null;
-              }
-            } else if (t == 0) {
-              return null;
-            } else {
-              if (timeout < 0 || (timeout > 0 && timeout <= t)) {
-                return null;
-              }
-            }
-          }
-          // do lookup
-          Map m;
-          try {
-            m = globReg.getAll(encName, timeout);
-          } catch (Exception e) {
-            // either timeout or real exception
-            m = null;
-          }
-          // convert from name->entry(type,uri) to type->uri
-          if (m != null && !m.isEmpty()) {
-            Map m2 = new HashMap(m.size());
-            for (Iterator iter = m.values().iterator(); iter.hasNext(); ) {
-              AddressEntry ae = (AddressEntry) iter.next();
-              m2.put(ae.getType(), ae.getURI());
-            }
-            m = Collections.unmodifiableMap(m2);
-          }
-          // cache result
-          o = m;
-          if (o == null) {
-            o = new Long(timeout);
-          }
-          cache.put(encName, o);
-          // return possibly null map
-          return m;
-        }
-      }
-    }
-  }
 
   /**
    * Service provider for our <code>RootServletService</code>.
