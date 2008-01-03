@@ -91,13 +91,21 @@ public final class ServletTunnel {
     {
       boolean is_post = "post".equalsIgnoreCase(req.getMethod());
 
-      // write request line:
+      boolean is_http11 = "HTTP/1.1".equals(req.getProtocol());
+
+      // write request line
+      //
+      // FIXME we force HTTP/1.0, since it's awkward to handle chunked data.
+      // For future reference, Tomcat's chunk-parser is in:
+      //   org.apache.catalina.connector.http.HttpRequestStream
+      // The major problem of switching to HTTP/1.0 is that we'll mangle any
+      // chunked content data, as noted below.
       String queryString = req.getQueryString();
       out.print(req.getMethod()+" "+req.getRequestURI());
       if (queryString != null) {
         out.print("?"+queryString);
       }
-      out.println(" "+req.getProtocol());
+      out.println(" HTTP/1.0");
 
       // get posted parameters "name=value" line
       String post_params = null;
@@ -122,6 +130,7 @@ public final class ServletTunnel {
       if (is_post) {
         out.println("Content-Length: "+post_params.length());
       }
+      boolean chunked = false;
       for (Enumeration en = req.getHeaderNames(); en.hasMoreElements(); ) {
         String name = (String) en.nextElement();
         if (is_post && "Content-Length".equals(name)) {
@@ -129,6 +138,9 @@ public final class ServletTunnel {
         }
         for (Enumeration e2 = req.getHeaders(name); e2.hasMoreElements(); ) {
           String value = (String) e2.nextElement();
+          if ("Transfer-Encoding".equals(name)) {
+            chunked = "chunked".equals(value);
+          }
           out.println(name+": "+value);
         }
       }
@@ -141,7 +153,12 @@ public final class ServletTunnel {
         int r_contentLength = req.getContentLength();
         InputStream r_in = req.getInputStream();
         if (r_contentLength >= 0) {
-          pipeTo(r_in, out, r_contentLength);
+          // FIXME if (chunked && is_http11) then we should either:
+          //   a) "unchunk" the stream
+          // or
+          //   b) use HTTP/1.1 and parse the chunks, including the "0"-length
+          //      end chunk marker.
+          pipeTo(r_in, out, r_contentLength, chunked);
         } else {
           // FIXME according to the HTTP spec this seems like an error, but we
           // may be missing some valid cases (e.g. chunked transfer data)
@@ -169,6 +186,7 @@ public final class ServletTunnel {
     // read headers
     String location = null;
     int contentLength = -1;
+    boolean chunked = false;
     while (true) {
       String s = readLine(in);
       if (s == null) break;
@@ -187,6 +205,8 @@ public final class ServletTunnel {
         res.setContentType(value);
       } else if ("Location".equals(name)) {
         location = value;
+      } else if ("Transfer-Encoding".equals(name)) {
+        chunked = "chunked".equals(value);
       }
     }
 
@@ -194,6 +214,9 @@ public final class ServletTunnel {
     {
       int sc_sep = status.indexOf(' ');
       int sm_sep = status.indexOf(' ', sc_sep+1);
+      if (sm_sep < 0) {
+        sm_sep = status.length();
+      }
       int sc = Integer.parseInt(status.substring(sc_sep+1, sm_sep).trim());
       if (sc < 300 || sc == HttpServletResponse.SC_NOT_MODIFIED) {
         // okay
@@ -217,7 +240,7 @@ public final class ServletTunnel {
     // read data
     if (location == null) {
       ServletOutputStream r_out = res.getOutputStream();
-      pipeTo(in, r_out, contentLength);
+      pipeTo(in, r_out, contentLength, chunked);
     }
 
     // done
@@ -227,7 +250,8 @@ public final class ServletTunnel {
   }
 
   private static void pipeTo(
-      final InputStream is, OutputStream out, int contentLength
+      final InputStream is, OutputStream out,
+      int contentLength, boolean chunked
       ) throws IOException {
     // we use an "annotated" stream to preserve the "out.flush()" requests.
     AnnotatedInputStream ais = AnnotatedInputStream.toAnnotatedInputStream(is);
