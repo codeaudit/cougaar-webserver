@@ -29,6 +29,7 @@ package org.cougaar.lib.web.service;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.URI;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -134,7 +135,8 @@ public class RedirectServlet extends ComponentServlet {
     AddressEntry ae = 
       AddressEntry.getAddressEntry("dummyName", uri.getScheme(), uri);
     String encName = ae.getName();
-    List options = Collections.singletonList("http_tunnel");
+    List options = Arrays.asList(new String[] {
+      "http_tunnel", "mts_tunnel"});
     HttpServletRequest httpReq =
       new HttpServletRequestWrapper(req) {
         public String getRequestURI() { return subpath; }
