@@ -41,6 +41,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -130,8 +131,8 @@ public class HttpServletRequestImpl implements HttpServletRequest {
       } else {
         serverHost = serverURL.substring(name_start, path_sep);
         serverPort = 
-          (scheme.equals("http") ? 80 :
-           scheme.equals("https") ? 443 :
+          (scheme.equalsIgnoreCase("http") ? 80 :
+           scheme.equalsIgnoreCase("https") ? 443 :
            -1);
       }
       if (serverHost.length() == 0) {
@@ -244,7 +245,7 @@ public class HttpServletRequestImpl implements HttpServletRequest {
       if (sep < 0) continue;
       String name = header.substring(0, sep).trim();
       String value = header.substring(sep+1).trim();
-      Object o = headers.get(name);
+      Object o = findHeader(name);
       if (o == null) {
         headers.put(name, value);
       } else {
@@ -302,7 +303,7 @@ public class HttpServletRequestImpl implements HttpServletRequest {
   public String getRemoteHost() { return clientHost; }
 
   // request info
-  public boolean isSecure() { return "https".equals(getScheme()); }
+  public boolean isSecure() { return "https".equalsIgnoreCase(getScheme()); }
   public String getScheme() { return scheme; }
   public String getMethod() { return method; }
   public String getPathInfo() { return pathInfo; }
@@ -317,8 +318,8 @@ public class HttpServletRequestImpl implements HttpServletRequest {
     if (port < 0) {
       port = 80;
     }
-    if ((scheme.equals("http") && (port != 80)) || 
-        (scheme.equals("https") && (port != 443))) {
+    if ((scheme.equalsIgnoreCase("http") && (port != 80)) || 
+        (scheme.equalsIgnoreCase("https") && (port != 443))) {
       ret.append(":").append(port);
     }
     ret.append(getRequestURI());
@@ -351,15 +352,29 @@ public class HttpServletRequestImpl implements HttpServletRequest {
   }
 
   // header info
-  public String getHeader(String name) {
+  private Object findHeader(String name) {
     Object o = headers.get(name);
+    if (o == null) {
+      // header names are case insensitive!  see rfc2616-sec4
+      for (Iterator iter = headers.entrySet().iterator(); iter.hasNext(); ) {
+        Map.Entry me = (Map.Entry) iter.next();
+        if (((String) me.getKey()).equalsIgnoreCase(name)) {
+          o = me.getValue();
+          break;
+        }
+      }
+    }
+    return o;
+  }
+  public String getHeader(String name) {
+    Object o = findHeader(name);
     return
       (o == null ? null :
        o instanceof String ? (String) o :
        (String) ((List) o).get(0));
   }
   public Enumeration getHeaders(String name) {
-    Object o = headers.get(name);
+    Object o = findHeader(name);
     List l = 
       (o == null ? Collections.EMPTY_LIST : 
        o instanceof String ? Collections.singletonList(o) :
@@ -436,5 +451,3 @@ public class HttpServletRequestImpl implements HttpServletRequest {
     throw new UnsupportedOperationException();
   }
 }
-
-

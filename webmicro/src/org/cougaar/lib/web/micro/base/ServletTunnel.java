@@ -91,7 +91,7 @@ public final class ServletTunnel {
     {
       boolean is_post = "post".equalsIgnoreCase(req.getMethod());
 
-      boolean is_http11 = "HTTP/1.1".equals(req.getProtocol());
+      boolean is_http11 = "HTTP/1.1".equalsIgnoreCase(req.getProtocol());
 
       // write request line
       //
@@ -133,13 +133,13 @@ public final class ServletTunnel {
       boolean chunked = false;
       for (Enumeration en = req.getHeaderNames(); en.hasMoreElements(); ) {
         String name = (String) en.nextElement();
-        if (is_post && "Content-Length".equals(name)) {
+        if (is_post && "Content-Length".equalsIgnoreCase(name)) {
           continue;
         }
         for (Enumeration e2 = req.getHeaders(name); e2.hasMoreElements(); ) {
           String value = (String) e2.nextElement();
-          if ("Transfer-Encoding".equals(name)) {
-            chunked = "chunked".equals(value);
+          if ("Transfer-Encoding".equalsIgnoreCase(name)) {
+            chunked = "chunked".equalsIgnoreCase(value);
           }
           out.println(name+": "+value);
         }
@@ -198,15 +198,15 @@ public final class ServletTunnel {
       String name = s.substring(0, sep).trim();
       String value = s.substring(sep+1).trim();
       res.addHeader(name, value);
-      if ("Content-Length".equals(name)) {
+      if ("Content-Length".equalsIgnoreCase(name)) {
         contentLength = Integer.parseInt(value);
         res.setContentLength(contentLength);
-      } else if ("Content-Type".equals(name)) {
+      } else if ("Content-Type".equalsIgnoreCase(name)) {
         res.setContentType(value);
-      } else if ("Location".equals(name)) {
+      } else if ("Location".equalsIgnoreCase(name)) {
         location = value;
-      } else if ("Transfer-Encoding".equals(name)) {
-        chunked = "chunked".equals(value);
+      } else if ("Transfer-Encoding".equalsIgnoreCase(name)) {
+        chunked = "chunked".equalsIgnoreCase(value);
       }
     }
 
