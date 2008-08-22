@@ -45,6 +45,7 @@ import org.cougaar.bootstrap.SystemProperties;
 import org.cougaar.core.component.Component;
 import org.cougaar.core.component.ServiceBroker;
 import org.cougaar.core.component.ServiceProvider;
+import org.cougaar.core.node.NodeIdentificationService;
 import org.cougaar.core.service.LoggingService;
 import org.cougaar.util.GenericStateModelAdapter;
 import org.cougaar.util.Parameters;
@@ -498,11 +499,14 @@ implements Component
     if (httpPort < 0 && httpsPort < 0) {
       return null;
     }
-    String localhost = null;
-    try {
-      localhost = InetAddress.getLocalHost().getHostName();
-    } catch (Exception e) {
-      throw new RuntimeException("Unable to get localhost address", e);
+    NodeIdentificationService nis = sb.getService(this, NodeIdentificationService.class, null);
+    InetAddress localaddr = nis.getInetAddress();
+    sb.releaseService(this, NodeIdentificationService.class, nis);
+    String localhost;
+    if (localaddr != null) {
+      localhost = localaddr.getHostName();
+    } else {
+      throw new RuntimeException("Unable to get localhost address");
     }
 
     // get the optional base path from our gateway.
