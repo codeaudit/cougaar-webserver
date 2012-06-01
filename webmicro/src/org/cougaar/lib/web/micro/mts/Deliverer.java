@@ -41,5 +41,5 @@ public interface Deliverer {
    *
    * @param data a mixed List of byte[]s and {@link Tokens}.
    */
-  void deliver(int counter, Map MetaData, List data);
+  void deliver(int counter, Map metaData, List data);
 }

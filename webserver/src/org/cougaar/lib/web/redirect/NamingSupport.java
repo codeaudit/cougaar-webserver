@@ -35,7 +35,7 @@ public interface NamingSupport {
   /**
    * Lookup all the entries for the given name.
    * <p>
-   * Typically a new instance is created for each {@link #redirect} call and
+   * Typically a new instance is created for each redirect call and
    * will cache the entries for each unique "encName".
    *
    * @param encName the URL-encoded remote agent name

@@ -107,7 +107,7 @@ public abstract class AnnotatedInputStream extends ServletInputStream {
    */
   public abstract int read2() throws IOException;
 
-  /** @see read2(byte[],int,int) */
+  /** @see #read2(byte[],int,int) */
   public int read2(byte[] b) throws IOException {
     return read2(b, 0, b.length);
   }
